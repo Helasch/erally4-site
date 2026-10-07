@@ -1,0 +1,50 @@
+# Dev local, autonome (pas de Traefik ni de réseaux externes) :
+#   docker compose -f docker-compose.dev.yml up --build
+# Site : http://localhost:3000 — API : http://localhost:8000
+
+services:
+  web:
+    build:
+      context: ./frontend
+      args:
+        API_URL: http://api:8000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+
+  api:
+    build: ./backend
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_NAME=erally4
+      - DB_USER=erally4
+      - DB_PASSWORD=erally4
+      - SESSION_SECRET=dev-secret-ne-pas-utiliser-en-prod
+    ports:
+      - "8000:8000"
+    volumes:
+      - uploads:/data/uploads
+    depends_on:
+      db:
+        condition: service_healthy
+
+  db:
+    image: mariadb:11
+    environment:
+      - MARIADB_DATABASE=erally4
+      - MARIADB_USER=erally4
+      - MARIADB_PASSWORD=erally4
+      - MARIADB_ROOT_PASSWORD=root
+    volumes:
+      - db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  uploads:
+  db-data:

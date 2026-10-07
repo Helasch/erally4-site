@@ -1,0 +1,70 @@
+name: Déploiement du projet
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+# Un seul déploiement à la fois
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  build:
+    name: Vérification du build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build des images
+        run: docker compose -f docker-compose.dev.yml build web api
+
+  deploy:
+    name: Déploiement en production
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH et déploiement
+        uses: appleboy/ssh-action@v1.2.0
+        env:
+          SERVER_PATH: ${{ secrets.SERVER_PATH }}
+          GIT_REPO_URL: https://github.com/${{ github.repository }}.git
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          SESSION_SECRET: ${{ secrets.SESSION_SECRET }}
+          UMAMI_SITE_ID: ${{ vars.UMAMI_SITE_ID }}
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          envs: SERVER_PATH,GIT_REPO_URL,DB_USER,DB_PASSWORD,SESSION_SECRET,UMAMI_SITE_ID
+          script: |
+            set -e
+            mkdir -p "$(dirname "$SERVER_PATH")"
+
+            if [ ! -d "$SERVER_PATH/.git" ]; then
+              echo "Premier déploiement - clonage du repository..."
+              git clone "$GIT_REPO_URL" "$SERVER_PATH"
+            else
+              echo "Mise à jour du projet existant..."
+              cd "$SERVER_PATH"
+              git fetch origin main
+              git reset --hard origin/main
+            fi
+
+            cd "$SERVER_PATH"
+
+            # .env généré depuis les secrets GitHub (lisible par deploy uniquement)
+            umask 077
+            {
+              printf "DB_USER='%s'\n" "$DB_USER"
+              printf "DB_PASSWORD='%s'\n" "$DB_PASSWORD"
+              printf "SESSION_SECRET='%s'\n" "$SESSION_SECRET"
+              printf "UMAMI_SITE_ID='%s'\n" "$UMAMI_SITE_ID"
+            } > .env
+
+            docker compose up -d --build --remove-orphans
+            docker image prune -f
+
+            echo "Déploiement effectué avec succès"
