@@ -51,6 +51,8 @@ jobs:
   deploy:
     name: Déploiement en production
     needs: build
+    # Activé uniquement si la variable de dépôt DEPLOY_ENABLED vaut "true" (voir DEPLOY.md)
+    if: vars.DEPLOY_ENABLED == 'true'
     runs-on: ubuntu-latest
     steps:
       - name: SSH et déploiement
