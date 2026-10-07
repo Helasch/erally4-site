@@ -35,7 +35,21 @@ Dépôt → Settings → Secrets and variables → Actions.
 | `SESSION_SECRET` | Secret | chaîne aléatoire (ex. `openssl rand -hex 32`) |
 | `UMAMI_SITE_ID` | Variable (optionnelle) | ID du site sur https://stats.devnest.fr |
 
-## 4. Premier déploiement
+## 4. Rendre les images publiques (une fois, après le premier build)
+
+GitHub → profil → Packages → `erally4-web` puis `erally4-api` → Package settings →
+Change visibility → **Public**. Le serveur peut alors faire `docker compose pull` sans authentification.
+
+## Déploiement manuel (sans l'Action)
+
+Les images étant publiques, il suffit du `docker-compose.yml` et d'un `.env` (voir `.env.example`) dans le même dossier :
+
+```bash
+docker compose pull
+docker compose up -d --remove-orphans
+```
+
+## 5. Premier déploiement
 
 Pousser sur `main` (ou Actions → « Déploiement du projet » → *Run workflow*), puis vérifier :
 

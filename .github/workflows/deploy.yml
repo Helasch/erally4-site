@@ -13,12 +13,40 @@ concurrency:
 
 jobs:
   build:
-    name: Vérification du build
+    name: Build et publication (${{ matrix.service }})
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          - service: web
+            context: ./frontend
+          - service: api
+            context: ./backend
     steps:
       - uses: actions/checkout@v4
-      - name: Build des images
-        run: docker compose -f docker-compose.dev.yml build web api
+
+      - uses: docker/setup-qemu-action@v3
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: |
+            ghcr.io/helasch/erally4-${{ matrix.service }}:latest
+            ghcr.io/helasch/erally4-${{ matrix.service }}:${{ github.sha }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
 
   deploy:
     name: Déploiement en production
@@ -55,7 +83,7 @@ jobs:
 
             cd "$SERVER_PATH"
 
-            # .env généré depuis les secrets GitHub (lisible par deploy uniquement)
+            # .env généré depuis les secrets GitHub (lisible par l'utilisateur de déploiement uniquement)
             umask 077
             {
               printf "DB_USER='%s'\n" "$DB_USER"
@@ -64,7 +92,8 @@ jobs:
               printf "UMAMI_SITE_ID='%s'\n" "$UMAMI_SITE_ID"
             } > .env
 
-            docker compose up -d --build --remove-orphans
+            docker compose pull
+            docker compose up -d --remove-orphans
             docker image prune -f
 
             echo "Déploiement effectué avec succès"

@@ -27,9 +27,10 @@ docker compose -f docker-compose.dev.yml up --build
 
 Chaque push sur `main` déclenche `.github/workflows/deploy.yml` :
 
-1. build de vérification des images sur GitHub ;
+1. build des images `web` et `api` (amd64 + arm64) et publication sur GHCR :
+   `ghcr.io/helasch/erally4-web` et `ghcr.io/helasch/erally4-api` (tags `latest` et SHA du commit) ;
 2. connexion SSH au serveur, `git clone`/mise à jour du dépôt dans le dossier du projet ;
 3. écriture du `.env` depuis les secrets GitHub ;
-4. `docker compose up -d --build --remove-orphans`.
+4. `docker compose pull` puis `docker compose up -d --remove-orphans`.
 
 Mise en place initiale : voir [DEPLOY.md](DEPLOY.md).

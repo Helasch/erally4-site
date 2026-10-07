@@ -1,6 +1,6 @@
-# Production — lancé par la GitHub Action :
-#   docker compose up -d --build --remove-orphans
-# Les variables ${...} viennent du fichier .env écrit par l'Action à côté de ce fichier.
+# Production — images publiées sur GHCR par la GitHub Action.
+#   docker compose pull && docker compose up -d --remove-orphans
+# Les variables ${...} viennent du fichier .env placé à côté de ce fichier.
 
 x-hardening: &hardening
   restart: unless-stopped
@@ -11,10 +11,7 @@ x-hardening: &hardening
 services:
   web:
     <<: *hardening
-    build:
-      context: ./frontend
-      args:
-        API_URL: http://api:8000
+    image: ghcr.io/helasch/erally4-web:latest
     container_name: erally4-web
     environment:
       - UMAMI_SITE_ID=${UMAMI_SITE_ID:-}
@@ -34,7 +31,7 @@ services:
 
   api:
     <<: *hardening
-    build: ./backend
+    image: ghcr.io/helasch/erally4-api:latest
     container_name: erally4-api
     environment:
       - DB_HOST=mariadb-central
