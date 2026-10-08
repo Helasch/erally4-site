@@ -735,3 +735,45 @@ a.button.primary {
 .login-brand .sidebar-brand-sub {
   color: rgba(255, 255, 255, 0.7);
 }
+
+/* Rallyes dans l'admin : formulaire d'ajout et statuts */
+.rally-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.rally-form label {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.8rem;
+}
+
+.tag.status-done {
+  background: #e7e2e1;
+  color: #3a3133;
+}
+
+.tag.status-done-pending {
+  background: #3a3133;
+  color: #fff;
+}
+
+.tag.status-live {
+  background: var(--accent);
+  color: #fff;
+}
+
+.tag.status-next {
+  background: var(--warn-bg);
+  color: var(--warn-text);
+}
+
+.tag.status-todo {
+  background: #f1eeec;
+  color: var(--muted);
+}

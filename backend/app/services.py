@@ -26,6 +26,7 @@ from app.models import (
     RallyResult,
     SiteSetting,
 )
+from app.rally_status import compute_statuses, now_paris
 from app.scoring import (
     ChampionshipCandidate,
     Finish,
@@ -283,7 +284,7 @@ def home_payload(db: Session, championship: Championship) -> dict:
         "last_rally": (
             {
                 **_rally_ref(last, rallies),
-                "event_date": last.event_date,
+                **rally_dates(last),
                 "podium": [_podium_entry(r) for r in last.results[:3]],
                 "top5": [_podium_entry(r) for r in last.results[:5]],
                 "result_count": len(last.results),
@@ -688,7 +689,7 @@ def driver_profile(db: Session, driver: Driver, championship: Championship | Non
                     "rally_id": rally.id,
                     "round": round_,
                     "rally": rally.name,
-                    "event_date": rally.event_date,
+                    **rally_dates(rally),
                     "position": r.position,
                     "finishers": len(rally.results),
                     "time": format_time_ms(r.time_ms),
@@ -860,3 +861,17 @@ def admin_link(db: Session, account: PilotAccount, driver_id: int) -> None:
     account.driver_id = driver.id
     account.link_status = "linked"
     db.commit()
+
+
+# --- Dates et statut des rallyes ------------------------------------------------------
+
+
+def rally_statuses(championship: Championship) -> dict[int, str]:
+    """Statut de chaque rallye du championnat (terminé, en cours, prochain…) à l'heure de Paris."""
+    rallies = list(championship.rallies)
+    statuses = compute_statuses([(r.starts_at, r.ends_at, bool(r.results)) for r in rallies], now_paris())
+    return {r.id: s for r, s in zip(rallies, statuses)}
+
+
+def rally_dates(rally: Rally) -> dict:
+    return {"starts_at": rally.starts_at, "ends_at": rally.ends_at}

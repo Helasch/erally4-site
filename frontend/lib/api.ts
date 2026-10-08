@@ -1,3 +1,4 @@
+import type { RallyStatus } from "./format";
 // Appels à l'API depuis le serveur Next.js (composants serveur).
 const API_URL = process.env.API_URL || "http://localhost:8000";
 
@@ -18,7 +19,9 @@ export type RallySummary = {
   round: number;
   name: string;
   order_index: number;
-  event_date: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  status: RallyStatus;
   has_results: boolean;
   result_count: number;
   winner: { name: string; platform: string } | null;
@@ -89,7 +92,9 @@ export type RallyDetail = {
   id: number;
   round: number;
   name: string;
-  event_date: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  status: RallyStatus;
   championship: { id: number; name: string; mode: "racenet" | "custom" };
   rallies: RallySummary[];
   results: RallyResultRow[];
@@ -141,7 +146,7 @@ export type Home = {
   total_rounds: number;
   completed_rounds: number;
   last_rally:
-    | (RallyRef & { event_date: string | null; podium: PodiumEntry[]; top5: PodiumEntry[]; result_count: number })
+    | (RallyRef & { starts_at: string | null; ends_at: string | null; podium: PodiumEntry[]; top5: PodiumEntry[]; result_count: number })
     | null;
   standings: {
     after: RallyRef | null;
@@ -203,7 +208,8 @@ export type DriverProfile = {
       rally_id: number;
       round: number;
       rally: string;
-      event_date: string | null;
+      starts_at: string | null;
+      ends_at: string | null;
       position: number;
       finishers: number;
       time: string;

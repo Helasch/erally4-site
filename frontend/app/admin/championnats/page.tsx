@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState, type FormEvent } from "react";
-import { adminApi, errorMessage, type AdminChampionship } from "@/lib/admin-api";
+import { adminApi, errorMessage, type AdminChampionship, type AdminRally } from "@/lib/admin-api";
+import { formatRallyDatesLong, statusLabel } from "@/lib/format";
 
 export default function AdminHome() {
   const [championships, setChampionships] = useState<AdminChampionship[] | null>(null);
@@ -89,7 +90,8 @@ function ChampionshipCard({
     await run(() =>
       adminApi.post(`/championships/${c.id}/rallies`, {
         name: data.get("name"),
-        event_date: data.get("event_date") || null,
+        starts_at: data.get("starts_at") || null,
+        ends_at: data.get("ends_at") || null,
       }),
     );
     form.reset();
@@ -167,59 +169,140 @@ function ChampionshipCard({
       {c.rallies.length > 0 && (
         <div className="table-wrap">
           <table>
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Rallye</th>
+                <th>Dates (heure de Paris)</th>
+                <th>Statut</th>
+                <th>Résultats</th>
+                <th></th>
+              </tr>
+            </thead>
             <tbody>
               {c.rallies.map((r, i) => (
-                <tr key={r.id}>
-                  <td className="pos">{i + 1}</td>
-                  <td>
-                    <strong>{r.name}</strong>
-                    {r.event_date && <span className="muted"> · {r.event_date}</span>}
-                  </td>
-                  <td>
-                    {r.result_count > 0 ? (
-                      <Link href={`/admin/rallyes/${r.id}`}>
-                        {r.result_count} résultats
-                        {r.unidentified > 0 && ` · ${r.unidentified} non identifié(s)`}
-                      </Link>
-                    ) : (
-                      <span className="muted">pas de résultats</span>
-                    )}
-                  </td>
-                  <td className="num">
-                    <button
-                      className="link"
-                      onClick={() => {
-                        const name = prompt("Nom du rallye", r.name);
-                        if (name === null) return;
-                        const date = prompt("Date (AAAA-MM-JJ, vide pour aucune)", r.event_date ?? "");
-                        if (date === null) return;
-                        run(() => adminApi.patch(`/rallies/${r.id}`, { name, event_date: date || null }));
-                      }}
-                    >
-                      Modifier
-                    </button>
-                    <button
-                      className="link danger"
-                      onClick={() => {
-                        if (confirm(`Supprimer le rallye « ${r.name} » et ses résultats ?`))
-                          run(() => adminApi.delete(`/rallies/${r.id}`));
-                      }}
-                    >
-                      Supprimer
-                    </button>
-                  </td>
-                </tr>
+                <RallyRow key={r.id} rally={r} round={i + 1} run={run} />
               ))}
             </tbody>
           </table>
         </div>
       )}
 
-      <form className="row" onSubmit={addRally} style={{ marginTop: 12 }}>
-        <input name="name" placeholder="Nom du rallye (ex. Rallye Monte-Carlo)" required maxLength={120} />
-        <input name="event_date" type="date" />
+      <form className="rally-form" onSubmit={addRally}>
+        <label>
+          Nom du rallye
+          <input name="name" placeholder="ex. Rallye Monte-Carlo" required maxLength={120} />
+        </label>
+        <label>
+          Début
+          <input name="starts_at" type="datetime-local" />
+        </label>
+        <label>
+          Fin
+          <input name="ends_at" type="datetime-local" />
+        </label>
         <button>Ajouter un rallye</button>
       </form>
     </section>
+  );
+}
+
+// "2026-03-12T20:00:00" -> "2026-03-12T20:00" (format du champ datetime-local)
+const toInput = (value: string | null) => (value ? value.slice(0, 16) : "");
+
+function RallyRow({
+  rally: r,
+  round,
+  run,
+}: {
+  rally: AdminRally;
+  round: number;
+  run: (action: () => Promise<unknown>) => Promise<void>;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ name: r.name, starts_at: toInput(r.starts_at), ends_at: toInput(r.ends_at) });
+  const status = statusLabel(r.status);
+
+  async function save() {
+    await run(() =>
+      adminApi.patch(`/rallies/${r.id}`, {
+        name: form.name,
+        starts_at: form.starts_at || null,
+        ends_at: form.ends_at || null,
+      }),
+    );
+    setEditing(false);
+  }
+
+  if (editing) {
+    return (
+      <tr>
+        <td className="pos">{round}</td>
+        <td>
+          <input value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} maxLength={120} />
+        </td>
+        <td colSpan={3}>
+          <div className="row">
+            <input
+              type="datetime-local"
+              value={form.starts_at}
+              onChange={(e) => setForm({ ...form, starts_at: e.target.value })}
+              aria-label="Début"
+            />
+            →
+            <input
+              type="datetime-local"
+              value={form.ends_at}
+              onChange={(e) => setForm({ ...form, ends_at: e.target.value })}
+              aria-label="Fin"
+            />
+          </div>
+        </td>
+        <td className="num">
+          <button className="primary" onClick={save}>
+            Enregistrer
+          </button>
+          <button className="link" onClick={() => setEditing(false)}>
+            Annuler
+          </button>
+        </td>
+      </tr>
+    );
+  }
+
+  return (
+    <tr>
+      <td className="pos">{round}</td>
+      <td>
+        <strong>{r.name}</strong>
+      </td>
+      <td className="muted">{formatRallyDatesLong(r.starts_at, r.ends_at) ?? "Dates à définir"}</td>
+      <td>
+        <span className={`tag status-${status.kind}`}>{status.text}</span>
+      </td>
+      <td>
+        {r.result_count > 0 ? (
+          <Link href={`/admin/rallyes/${r.id}`}>
+            {r.result_count} résultats
+            {r.unidentified > 0 && ` · ${r.unidentified} non identifié(s)`}
+          </Link>
+        ) : (
+          <span className="muted">—</span>
+        )}
+      </td>
+      <td className="num">
+        <button className="link" onClick={() => setEditing(true)}>
+          Modifier
+        </button>
+        <button
+          className="link danger"
+          onClick={() => {
+            if (confirm(`Supprimer le rallye « ${r.name} » et ses résultats ?`)) run(() => adminApi.delete(`/rallies/${r.id}`));
+          }}
+        >
+          Supprimer
+        </button>
+      </td>
+    </tr>
   );
 }

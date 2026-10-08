@@ -7,14 +7,18 @@ export default function PageHeader({
   subtitle,
   crumbs = [],
   children,
+  visual,
 }: {
   title: string;
   subtitle?: string;
   crumbs?: { href: string; label: string }[];
   children?: ReactNode;
+  /** Illustration à droite du bandeau (ex. la voiture du pilote) */
+  visual?: ReactNode;
 }) {
   return (
-    <section className="page-head">
+    <section className={`page-head ${visual ? "has-visual" : ""}`}>
+      {visual}
       <div className="page-head-inner">
         <nav className="crumbs" aria-label="Fil d'Ariane">
           <Link href="/">Accueil</Link>

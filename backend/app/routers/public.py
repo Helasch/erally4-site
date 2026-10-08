@@ -12,6 +12,8 @@ from app.services import (
     get_championship,
     get_rally,
     home_payload,
+    rally_dates,
+    rally_statuses,
     not_found,
     rally_results_payload,
     read_settings,
@@ -26,14 +28,15 @@ def _current(db: Session) -> Championship | None:
     return db.scalar(select(Championship).where(Championship.is_current.is_(True)))
 
 
-def _rally_summary(rally: Rally, index: int) -> dict:
+def _rally_summary(rally: Rally, index: int, status: str) -> dict:
     winner = rally.results[0] if rally.results else None
     return {
         "id": rally.id,
         "round": index + 1,
         "name": rally.name,
         "order_index": rally.order_index,
-        "event_date": rally.event_date,
+        **rally_dates(rally),
+        "status": status,
         "has_results": winner is not None,
         "result_count": len(rally.results),
         "winner": (
@@ -45,12 +48,13 @@ def _rally_summary(rally: Rally, index: int) -> dict:
 
 
 def _championship_payload(c: Championship) -> dict:
+    statuses = rally_statuses(c)
     return {
         "id": c.id,
         "name": c.name,
         "is_current": c.is_current,
         "mode": c.scoring_mode,
-        "rallies": [_rally_summary(r, i) for i, r in enumerate(c.rallies)],
+        "rallies": [_rally_summary(r, i, statuses[r.id]) for i, r in enumerate(c.rallies)],
     }
 
 
@@ -104,13 +108,15 @@ def rally(rally_id: int, db: Session = Depends(get_db)):
     r = get_rally(db, rally_id)
     c = r.championship
     scoring = scoring_table(c) if c.scoring_mode == "custom" else None
-    siblings = [_rally_summary(x, i) for i, x in enumerate(c.rallies)]
+    statuses = rally_statuses(c)
+    siblings = [_rally_summary(x, i, statuses[x.id]) for i, x in enumerate(c.rallies)]
     index = next(i for i, x in enumerate(c.rallies) if x.id == r.id)
     return {
         "id": r.id,
         "round": index + 1,
         "name": r.name,
-        "event_date": r.event_date,
+        **rally_dates(r),
+        "status": statuses[r.id],
         "championship": {"id": c.id, "name": c.name, "mode": c.scoring_mode},
         "rallies": siblings,
         "results": rally_results_payload(r, scoring),

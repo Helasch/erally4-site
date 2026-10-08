@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { fetchMe, pilotApi, PilotApiError, type PilotAccount } from "@/lib/pilot-api";
 import Avatar from "../avatar";
+import CarVisual from "../car-visual";
 import PageHeader from "../page-header";
 
 const LINK_LABELS: Record<PilotAccount["link_status"], { text: string; kind: string }> = {
@@ -125,7 +126,11 @@ export default function MonComptePage() {
 
   return (
     <>
-      <PageHeader title="Mon compte" subtitle={`Connecté avec Discord : ${me.discord_username}`}>
+      <PageHeader
+        title="Mon compte"
+        subtitle={`Connecté avec Discord : ${me.discord_username}`}
+        visual={<CarVisual vehicle={me.vehicle} />}
+      >
         <div className="driver-head">
           <Avatar name={displayName} url={me.avatar_url} size={72} />
           <div className="driver-tags">
