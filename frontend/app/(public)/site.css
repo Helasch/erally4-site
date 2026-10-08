@@ -1386,3 +1386,166 @@
     font-size: 1.4rem;
   }
 }
+
+/* --- Page Calendrier ---------------------------------------------------------- */
+
+.site .head-filters {
+  margin-top: 20px;
+}
+
+.site .rounds {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site .round {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr) minmax(0, 380px);
+  align-items: stretch;
+  background: var(--s-card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.site .round.next {
+  outline: 3px solid var(--s-red);
+  outline-offset: -3px;
+}
+
+.site .round-num {
+  display: grid;
+  place-items: center;
+  background: var(--s-red);
+  color: #fff;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 2.8rem;
+}
+
+.site .round.todo .round-num {
+  background: #d3cdca;
+  color: var(--s-ink);
+}
+
+.site .round.next .round-num {
+  background: var(--s-black);
+  color: #fff;
+}
+
+.site .round-main {
+  padding: 18px 24px;
+}
+
+.site .round-kicker {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  color: var(--s-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.site .round-flag {
+  padding: 2px 8px;
+  background: var(--s-red-bright);
+  color: #fff;
+  letter-spacing: 0.06em;
+}
+
+.site .round-name {
+  margin: 4px 0;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 2.2rem;
+  line-height: 1;
+  text-transform: uppercase;
+  color: var(--s-ink);
+}
+
+.site .round-date {
+  margin: 0;
+  color: var(--s-muted);
+}
+
+.site .round-results {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 16px 24px;
+  border-left: 1px solid var(--s-line);
+}
+
+.site .round-results .text-link {
+  margin-top: 8px;
+}
+
+.site .round-podium {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site .round-podium li {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  gap: 8px;
+  padding: 3px 0;
+}
+
+.site .round-podium b {
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  color: var(--s-pos);
+}
+
+.site .round-podium li:first-child b {
+  color: var(--s-red-text);
+}
+
+.site .round-driver {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+
+.site .round-time {
+  color: var(--s-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 860px) {
+  .site .round {
+    grid-template-columns: 64px minmax(0, 1fr);
+  }
+
+  .site .round-num {
+    grid-row: span 2;
+    font-size: 2.2rem;
+  }
+
+  .site .round-main {
+    padding: 14px 16px 6px;
+  }
+
+  .site .round-name {
+    font-size: 1.8rem;
+  }
+
+  .site .round-results {
+    padding: 8px 16px 16px;
+    border-left: none;
+  }
+}
