@@ -20,11 +20,9 @@ from app.services import (
 router = APIRouter(prefix="/api")
 
 
-def _current(db: Session) -> Championship:
-    championship = db.scalar(select(Championship).where(Championship.is_current.is_(True)))
-    if championship is None:
-        raise not_found("Championnat en cours")
-    return championship
+def _current(db: Session) -> Championship | None:
+    # Aucun championnat en cours n'est un état normal (début de saison) : les routes répondent null, pas 404
+    return db.scalar(select(Championship).where(Championship.is_current.is_(True)))
 
 
 def _rally_summary(rally: Rally, index: int) -> dict:
@@ -76,6 +74,8 @@ def standings(championship_id: int, apres: int | None = None, db: Session = Depe
 @router.get("/home")
 def home(db: Session = Depends(get_db)):
     c = _current(db)
+    if c is None:
+        return None
     return {**home_payload(db, c), "calendar": _championship_payload(c)["rallies"]}
 
 
@@ -86,12 +86,15 @@ def public_settings(db: Session = Depends(get_db)):
 
 @router.get("/championship/current")
 def current_championship(db: Session = Depends(get_db)):
-    return _championship_payload(_current(db))
+    c = _current(db)
+    return _championship_payload(c) if c is not None else None
 
 
 @router.get("/championship/current/standings")
 def current_standings(db: Session = Depends(get_db)):
     c = _current(db)
+    if c is None:
+        return None
     return {"championship": {"id": c.id, "name": c.name}, **championship_standings(db, c)}
 
 

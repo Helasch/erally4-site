@@ -40,12 +40,16 @@ Sur le serveur :
 
 Les migrations de la base sont appliquées automatiquement à chaque démarrage de l'API.
 
-## Option 2 — Automatique via GitHub Actions (plus tard)
+## Option 2 — Automatique via GitHub Actions
 
-L'Action se connecte en SSH au serveur, met à jour le dépôt, écrit le `.env` depuis les secrets GitHub,
-puis fait `pull` + `up`. Désactivée tant que la variable `DEPLOY_ENABLED` n'est pas à `true`.
+Après chaque fusion sur `main`, une fois les images publiées, l'Action se connecte en SSH au serveur et fait
+exactement le déploiement manuel : récupère le `docker-compose.yml` à jour, puis `docker compose pull` et `up -d`.
+**Le `.env` du serveur n'est jamais modifié** : les identifiants de la base restent uniquement sur le serveur.
 
-### Clé SSH dédiée
+Prérequis côté serveur (Option 1 déjà faite) : le dossier du projet avec son `.env`, et un utilisateur de
+déploiement qui peut lancer `docker` et `curl` et écrire dans ce dossier.
+
+### 1. Clé SSH dédiée (une seule fois)
 
 ```bash
 ssh-keygen -t ed25519 -C "github-actions-erally4" -f erally4_deploy
@@ -57,19 +61,30 @@ ssh-keygen -t ed25519 -C "github-actions-erally4" -f erally4_deploy
   de l'utilisateur de déploiement.
 - `erally4_deploy` (privée) → secret GitHub `SSH_PRIVATE_KEY`, puis supprimer le fichier local.
 
-### Secrets et variables GitHub
+### 2. Secrets et variable GitHub
 
 Dépôt → Settings → Secrets and variables → Actions.
 
 | Nom | Type | Valeur |
 |---|---|---|
-| `SERVER_HOST` | Secret | adresse du serveur (fournie par l'admin) |
-| `SERVER_USER` | Secret | utilisateur SSH de déploiement (fourni par l'admin) |
-| `SERVER_PATH` | Secret | dossier du projet sur le serveur (fourni par l'admin) |
+| `SERVER_HOST` | Secret | adresse du serveur |
+| `SERVER_USER` | Secret | utilisateur SSH de déploiement |
+| `SERVER_PATH` | Secret | dossier du projet sur le serveur (ex. `/opt/docker/erally4-site`) |
 | `SSH_PRIVATE_KEY` | Secret | contenu de `erally4_deploy` |
-| `DB_USER` | Secret | fourni par l'admin |
-| `DB_PASSWORD` | Secret | fourni par l'admin (éviter le caractère `'`) |
+| `SERVER_FINGERPRINT` | Secret (conseillé) | empreinte de la clé du serveur, pour ne se connecter qu'à lui (voir ci-dessous) |
 | `DEPLOY_ENABLED` | Variable | `true` pour activer le déploiement automatique |
+
+Empreinte du serveur (à lancer par l'admin, sur le serveur) :
+
+```bash
+ssh-keygen -lf /etc/ssh/ssh_host_ed25519_key.pub
+```
+
+→ copier la partie `SHA256:…` dans `SERVER_FINGERPRINT`.
+
+### 3. Tester
+
+GitHub → Actions → « CI / CD » → *Run workflow* sur `main` : l'étape « Déploiement en production » doit passer au vert.
 
 ## Vérification
 

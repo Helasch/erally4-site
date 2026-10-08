@@ -6,7 +6,7 @@ export const dynamic = "force-dynamic";
 
 async function loadHome(): Promise<Home | null> {
   try {
-    return await apiGet<Home>("/api/home");
+    return await apiGet<Home | null>("/api/home");
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;
     throw e;

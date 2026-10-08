@@ -38,7 +38,7 @@ export type ChampionshipListItem = { id: number; name: string; is_current: boole
 export async function loadChampionship(saison: string | undefined): Promise<Championship | null> {
   const path = saison && /^\d+$/.test(saison) ? `/api/championships/${saison}` : "/api/championship/current";
   try {
-    return await apiGet<Championship>(path);
+    return await apiGet<Championship | null>(path);
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;
     throw e;
