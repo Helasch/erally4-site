@@ -1,6 +1,13 @@
-# Dev local, autonome (pas de Traefik ni de réseaux externes) :
+# Dev local, autonome (pas de Traefik ni de réseaux externes).
+#
+# Tout dans Docker :
 #   docker compose -f docker-compose.dev.yml up --build
+# Ou base + API dans Docker et front avec rechargement à chaud :
+#   docker compose -f docker-compose.dev.yml up -d --build db api
+#   cd frontend && npm run dev
+#
 # Site : http://localhost:3000 — API : http://localhost:8000
+# Premier admin : docker compose -f docker-compose.dev.yml exec api python -m app.cli create-admin
 
 services:
   web:
@@ -22,6 +29,8 @@ services:
       - DB_USER=erally4
       - DB_PASSWORD=erally4
       - SESSION_SECRET=dev-secret-ne-pas-utiliser-en-prod
+      # Cookies sans HTTPS en local
+      - COOKIE_SECURE=false
     ports:
       - "8000:8000"
     volumes:

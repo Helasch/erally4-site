@@ -14,10 +14,13 @@ RUN npm run build
 
 FROM node:24-alpine AS runtime
 WORKDIR /app
+ARG API_URL=http://api:8000
+# Utilisée à l'exécution par les pages rendues côté serveur
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
     HOSTNAME=0.0.0.0 \
-    PORT=3000
+    PORT=3000 \
+    API_URL=$API_URL
 # L'image node fournit déjà l'utilisateur "node" (uid 1000)
 COPY --from=build --chown=1000:1000 /app/.next/standalone ./
 COPY --from=build --chown=1000:1000 /app/.next/static ./.next/static

@@ -22,7 +22,7 @@ Sur le serveur, dans le dossier du projet :
    ```
    DB_USER=...
    DB_PASSWORD=...
-   SESSION_SECRET=...   # chaîne aléatoire, ex. openssl rand -hex 32
+   SESSION_SECRET=...   # 32 caractères minimum, ex. openssl rand -hex 32
    UMAMI_SITE_ID=       # optionnel
    ```
 
@@ -32,6 +32,14 @@ Sur le serveur, dans le dossier du projet :
    docker compose pull
    docker compose up -d --remove-orphans
    ```
+
+4. Au premier lancement, créer le compte admin :
+
+   ```bash
+   docker exec -it erally4-api python -m app.cli create-admin
+   ```
+
+Les migrations de la base sont appliquées automatiquement à chaque démarrage de l'API.
 
 ## Option 2 — Automatique via GitHub Actions (plus tard)
 
