@@ -1,10 +1,13 @@
 from app.scoring import (
     ChampionshipCandidate,
+    DriverStats,
+    Finish,
     Movement,
     PastRallyResult,
     RallyFinish,
     compare_standings,
     compute_custom_standings,
+    driver_stats,
     suggest_for_championship,
     suggest_for_rally,
 )
@@ -108,3 +111,14 @@ def test_compare_standings_movements():
 
 def test_compare_standings_without_previous():
     assert compare_standings([(1, 1, 25)], None) == [Movement(None, None, False)]
+
+
+def test_driver_stats():
+    stats = driver_stats([Finish(1, 35, 0), Finish(4, 40, 60_000), Finish(12, 38, 120_500)])
+    assert stats == DriverStats(
+        rallies=3, wins=1, podiums=1, top10=2, best=1, average_position=5.7, average_gap_ms=60_167
+    )
+
+
+def test_driver_stats_empty():
+    assert driver_stats([]) == DriverStats()

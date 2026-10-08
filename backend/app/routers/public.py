@@ -3,9 +3,11 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Championship, Rally
+from app.models import Championship, Driver, Rally
 from app.services import (
     championship_standings,
+    driver_profile,
+    drivers_overview,
     get_championship,
     get_rally,
     home_payload,
@@ -109,3 +111,26 @@ def rally(rally_id: int, db: Session = Depends(get_db)):
         "rallies": siblings,
         "results": rally_results_payload(r, scoring),
     }
+
+
+def _season(db: Session, saison: int | None) -> Championship | None:
+    if saison is not None:
+        return get_championship(db, saison)
+    return db.scalar(select(Championship).where(Championship.is_current.is_(True)))
+
+
+@router.get("/drivers")
+def drivers(saison: int | None = None, db: Session = Depends(get_db)):
+    """Pilotes du championnat (en cours par défaut) avec leurs chiffres principaux."""
+    c = _season(db, saison)
+    if c is None:
+        return {"championship": None, "drivers": []}
+    return {"championship": {"id": c.id, "name": c.name}, "drivers": drivers_overview(db, c)}
+
+
+@router.get("/drivers/{driver_id}")
+def driver(driver_id: int, saison: int | None = None, db: Session = Depends(get_db)):
+    d = db.get(Driver, driver_id)
+    if d is None:
+        raise not_found("Pilote")
+    return driver_profile(db, d, _season(db, saison))

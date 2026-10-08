@@ -1,13 +1,32 @@
+import { apiGet, type DriverListItem } from "@/lib/api";
+import { plural } from "@/lib/format";
 import PageHeader from "../page-header";
+import DriverGrid from "./driver-grid";
 
-// Page provisoire : la liste des pilotes et leurs statistiques arrivent à l'étape suivante
-export default function PilotesPage() {
+export const dynamic = "force-dynamic";
+
+export default async function PilotesPage() {
+  const data = await apiGet<{ championship: { id: number; name: string } | null; drivers: DriverListItem[] }>(
+    "/api/drivers",
+  );
+
   return (
     <>
-      <PageHeader title="Pilotes" subtitle="Profils et statistiques des pilotes du championnat." />
-      <section className="band">
+      <PageHeader
+        title="Pilotes"
+        subtitle={
+          data.championship
+            ? `${plural(data.drivers.length, "pilote")} · ${data.championship.name}`
+            : "Profils et statistiques des pilotes."
+        }
+      />
+      <section className="band band-grey">
         <div className="band-inner">
-          <p className="empty">Les pages pilotes arrivent très bientôt.</p>
+          {data.drivers.length === 0 ? (
+            <p className="empty">Les pilotes apparaîtront après le premier rallye.</p>
+          ) : (
+            <DriverGrid drivers={data.drivers} />
+          )}
         </div>
       </section>
     </>

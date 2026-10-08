@@ -3,7 +3,7 @@
 import os
 import re
 import secrets
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -16,10 +16,12 @@ from app.csv_import import ANONYMOUS_NAME, ChampionshipRow, ParsedCsv, RallyRow,
 from app.models import Championship, Driver, Import, RacenetStanding, Rally, RallyResult, SiteSetting
 from app.scoring import (
     ChampionshipCandidate,
+    Finish,
     PastRallyResult,
     RallyFinish,
     compare_standings,
     compute_custom_standings,
+    driver_stats,
     suggest_for_championship,
     suggest_for_rally,
 )
@@ -527,3 +529,119 @@ def write_settings(db: Session, values: dict) -> dict:
             setting.value = value
     db.commit()
     return read_settings(db)
+
+
+# --- Pilotes : liste et profil ------------------------------------------------------
+
+
+def _most_common(values: list[str]) -> str | None:
+    return Counter(values).most_common(1)[0][0] if values else None
+
+
+def _driver_results(championship: Championship) -> dict[int, list[tuple[int, Rally, RallyResult]]]:
+    """Résultats identifiés du championnat, par pilote : (numéro de manche, rallye, résultat)."""
+    by_driver: dict[int, list[tuple[int, Rally, RallyResult]]] = defaultdict(list)
+    for index, rally in enumerate(championship.rallies):
+        for result in rally.results:
+            if result.driver_id is not None:
+                by_driver[result.driver_id].append((index + 1, rally, result))
+    return by_driver
+
+
+def drivers_overview(db: Session, championship: Championship) -> list[dict]:
+    """Tous les pilotes du championnat (résultats ou classement), avec leurs chiffres principaux."""
+    standings = {e["driver_id"]: e for e in championship_standings(db, championship)["standings"] if e["driver_id"]}
+    results = _driver_results(championship)
+    ids = set(standings) | set(results)
+    drivers = {d.id: d for d in db.scalars(select(Driver).where(Driver.id.in_(ids)))} if ids else {}
+
+    rows = []
+    for driver_id, driver in drivers.items():
+        mine = results.get(driver_id, [])
+        stats = driver_stats([Finish(r.position, len(rally.results), r.diff_ms) for _, rally, r in mine])
+        standing = standings.get(driver_id)
+        rows.append(
+            {
+                "id": driver_id,
+                "name": driver.name,
+                "position": standing["position"] if standing else None,
+                "points": standing["points"] if standing else None,
+                "rallies": stats.rallies,
+                "wins": stats.wins,
+                "podiums": stats.podiums,
+                "best": stats.best,
+                "platform": _most_common([r.platform for _, _, r in mine]),
+                "vehicle": _most_common([r.vehicle for _, _, r in mine]),
+            }
+        )
+    rows.sort(key=lambda r: (r["position"] is None, r["position"] or 0, r["name"].lower()))
+    return rows
+
+
+def driver_profile(db: Session, driver: Driver, championship: Championship | None) -> dict:
+    """Profil public d'un pilote : statistiques du championnat, historique, évolution, carrière."""
+    career_rows = db.execute(
+        select(RallyResult, Rally)
+        .join(Rally, RallyResult.rally_id == Rally.id)
+        .where(RallyResult.driver_id == driver.id)
+    ).all()
+    career = driver_stats([Finish(r.position, len(rally.results), r.diff_ms) for r, rally in career_rows])
+
+    season = None
+    if championship is not None:
+        rallies = list(championship.rallies)
+        mine = _driver_results(championship).get(driver.id, [])
+        scoring = scoring_table(championship) if championship.scoring_mode == "custom" else None
+        stats = driver_stats([Finish(r.position, len(rally.results), r.diff_ms) for _, rally, r in mine])
+
+        # Position au général après chaque manche (courbe de progression)
+        progression = []
+        for snapshot in standings_snapshots(db, championship):
+            entry = next((e for e in snapshot.entries if e["driver_id"] == driver.id), None)
+            if snapshot.rally is not None and entry is not None:
+                progression.append(
+                    {
+                        "round": rallies.index(snapshot.rally) + 1,
+                        "rally": snapshot.rally.name,
+                        "position": entry["position"],
+                        "points": entry["points"],
+                        "classified": len(snapshot.entries),
+                    }
+                )
+        current = championship_standings(db, championship)["standings"]
+        standing = next((e for e in current if e["driver_id"] == driver.id), None)
+
+        season = {
+            "championship": {"id": championship.id, "name": championship.name, "mode": championship.scoring_mode},
+            "position": standing["position"] if standing else None,
+            "points": standing["points"] if standing else None,
+            "classified": len(current),
+            "stats": stats.__dict__,
+            "progression": progression,
+            "history": [
+                {
+                    "rally_id": rally.id,
+                    "round": round_,
+                    "rally": rally.name,
+                    "event_date": rally.event_date,
+                    "position": r.position,
+                    "finishers": len(rally.results),
+                    "time": format_time_ms(r.time_ms),
+                    "diff": format_time_ms(r.diff_ms),
+                    "vehicle": r.vehicle,
+                    "platform": r.platform,
+                    "points": scoring.get(r.position, 0) if scoring is not None else None,
+                }
+                for round_, rally, r in mine
+            ],
+        }
+
+    all_results = [r for r, _ in career_rows]
+    return {
+        "id": driver.id,
+        "name": driver.name,
+        "platform": _most_common([r.platform for r in all_results]),
+        "vehicle": _most_common([r.vehicle for r in all_results]),
+        "career": career.__dict__,
+        "season": season,
+    }

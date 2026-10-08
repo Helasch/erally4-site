@@ -67,6 +67,43 @@ def compute_custom_standings(
     return ordered
 
 
+# --- Statistiques d'un pilote -------------------------------------------------
+
+
+@dataclass
+class Finish:
+    position: int
+    finishers: int
+    diff_ms: int
+
+
+@dataclass
+class DriverStats:
+    rallies: int = 0
+    wins: int = 0
+    podiums: int = 0
+    top10: int = 0
+    best: int | None = None
+    average_position: float | None = None
+    # Écart moyen au vainqueur, en millisecondes
+    average_gap_ms: int | None = None
+
+
+def driver_stats(finishes: list[Finish]) -> DriverStats:
+    if not finishes:
+        return DriverStats()
+    positions = [f.position for f in finishes]
+    return DriverStats(
+        rallies=len(finishes),
+        wins=sum(1 for p in positions if p == 1),
+        podiums=sum(1 for p in positions if p <= 3),
+        top10=sum(1 for p in positions if p <= 10),
+        best=min(positions),
+        average_position=round(sum(positions) / len(positions), 1),
+        average_gap_ms=round(sum(f.diff_ms for f in finishes) / len(finishes)),
+    )
+
+
 # --- Évolution entre deux classements -----------------------------------------
 
 

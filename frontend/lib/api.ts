@@ -158,3 +158,62 @@ export type Home = {
   };
   calendar: RallySummary[];
 };
+
+export type DriverListItem = {
+  id: number;
+  name: string;
+  position: number | null;
+  points: number | null;
+  rallies: number;
+  wins: number;
+  podiums: number;
+  best: number | null;
+  platform: string | null;
+  vehicle: string | null;
+};
+
+export type DriverStats = {
+  rallies: number;
+  wins: number;
+  podiums: number;
+  top10: number;
+  best: number | null;
+  average_position: number | null;
+  average_gap_ms: number | null;
+};
+
+export type DriverProfile = {
+  id: number;
+  name: string;
+  platform: string | null;
+  vehicle: string | null;
+  career: DriverStats;
+  season: {
+    championship: { id: number; name: string; mode: "racenet" | "custom" };
+    position: number | null;
+    points: number | null;
+    classified: number;
+    stats: DriverStats;
+    progression: { round: number; rally: string; position: number; points: number; classified: number }[];
+    history: {
+      rally_id: number;
+      round: number;
+      rally: string;
+      event_date: string | null;
+      position: number;
+      finishers: number;
+      time: string;
+      diff: string;
+      vehicle: string;
+      platform: string;
+      points: number | null;
+    }[];
+  } | null;
+};
+
+/** Écart en millisecondes -> "+1:23.456" */
+export function formatGapMs(ms: number): string {
+  const minutes = Math.floor(ms / 60000);
+  const seconds = ((ms % 60000) / 1000).toFixed(3).padStart(6, "0");
+  return `+${minutes}:${seconds}`;
+}
