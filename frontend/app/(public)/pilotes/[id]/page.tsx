@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ApiError, apiGet, formatDiff, formatGapMs, formatTime, type DriverProfile } from "@/lib/api";
 import { ordinal, shortRallyName } from "@/lib/format";
 import Avatar from "../../avatar";
+import CarVisual from "../../car-visual";
 import PageHeader from "../../page-header";
 
 export const dynamic = "force-dynamic";
@@ -66,7 +67,11 @@ export default async function PilotePage({ params }: { params: Promise<{ id: str
 
   return (
     <>
-      <PageHeader title={driver.name} crumbs={[{ href: "/pilotes", label: "Pilotes" }]}>
+      <PageHeader
+        title={driver.name}
+        crumbs={[{ href: "/pilotes", label: "Pilotes" }]}
+        visual={<CarVisual vehicle={driver.vehicle} />}
+      >
         <div className="driver-head">
           <Avatar name={driver.name} url={driver.avatar_url} size={96} />
           <div className="driver-tags">

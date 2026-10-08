@@ -2063,3 +2063,64 @@
     padding: 24px 18px;
   }
 }
+
+/* --- Voiture du pilote dans le bandeau ----------------------------------------- */
+
+.site .page-head.has-visual::after {
+  display: none; /* pas de filigrane derrière la voiture */
+}
+
+.site .head-visual {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(56%, 720px);
+  pointer-events: none;
+}
+
+/* Diagonale rouge derrière la voiture, comme sur l'accueil */
+.site .head-visual::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(160deg, #b40d16, var(--s-red) 70%);
+  clip-path: polygon(38% 0, 100% 0, 100% 100%, 12% 100%);
+  opacity: 0.9;
+}
+
+.site .head-visual img {
+  position: absolute;
+  right: 4%;
+  bottom: 6%;
+  width: auto;
+  height: auto;
+  max-width: 92%;
+  max-height: 88%;
+  object-fit: contain;
+  filter: drop-shadow(0 18px 24px rgba(0, 0, 0, 0.55));
+}
+
+/* Le texte reste au-dessus de l'illustration */
+.site .page-head.has-visual .page-head-inner {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 860px) {
+  .site .head-visual {
+    width: 100%;
+    opacity: 0.35;
+  }
+
+  .site .head-visual::before {
+    clip-path: polygon(55% 0, 100% 0, 100% 100%, 30% 100%);
+  }
+
+  .site .head-visual img {
+    right: -6%;
+    bottom: 4%;
+    max-width: 85%;
+    max-height: 70%;
+  }
+}

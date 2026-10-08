@@ -7,3 +7,6 @@ __pycache__/
 *.tsbuildinfo
 *.local.txt
 *.local.sql
+
+# Photos de voitures de dev (droits non acquis) : seules les captures du jeu seront commitées
+frontend/public/cars/*.webp

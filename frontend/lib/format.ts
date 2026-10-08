@@ -39,3 +39,13 @@ export function avatarHue(name: string): number {
 export function ordinal(n: number): string {
   return n === 1 ? "1er" : `${n}e`;
 }
+
+/** "Peugeot 208 Rally4" -> "peugeot-208-rally4" (nom du fichier image dans public/cars) */
+export function carSlug(vehicle: string): string {
+  return vehicle
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+}
