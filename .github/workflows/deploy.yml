@@ -91,36 +91,27 @@ jobs:
         uses: appleboy/ssh-action@v1.2.0
         env:
           SERVER_PATH: ${{ secrets.SERVER_PATH }}
-          GIT_REPO_URL: https://github.com/${{ github.repository }}.git
-          DB_USER: ${{ secrets.DB_USER }}
-          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          # docker-compose.yml de ce commit précis
+          COMPOSE_URL: https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose.yml
         with:
           host: ${{ secrets.SERVER_HOST }}
           username: ${{ secrets.SERVER_USER }}
           key: ${{ secrets.SSH_PRIVATE_KEY }}
-          envs: SERVER_PATH,GIT_REPO_URL,DB_USER,DB_PASSWORD
+          # Empreinte de la clé du serveur (facultatif mais conseillé, voir DEPLOY.md)
+          fingerprint: ${{ secrets.SERVER_FINGERPRINT }}
+          envs: SERVER_PATH,COMPOSE_URL
           script: |
             set -e
-            mkdir -p "$(dirname "$SERVER_PATH")"
-
-            if [ ! -d "$SERVER_PATH/.git" ]; then
-              echo "Premier déploiement - clonage du repository..."
-              git clone "$GIT_REPO_URL" "$SERVER_PATH"
-            else
-              echo "Mise à jour du projet existant..."
-              cd "$SERVER_PATH"
-              git fetch origin main
-              git reset --hard origin/main
-            fi
-
             cd "$SERVER_PATH"
 
-            # .env généré depuis les secrets GitHub (lisible par l'utilisateur de déploiement uniquement)
-            umask 077
-            {
-              printf "DB_USER='%s'\n" "$DB_USER"
-              printf "DB_PASSWORD='%s'\n" "$DB_PASSWORD"
-            } > .env
+            # Le .env (identifiants de la base) est géré sur le serveur et n'est jamais modifié ici
+            if [ ! -f .env ]; then
+              echo "Fichier .env absent dans $SERVER_PATH : déploiement annulé."
+              exit 1
+            fi
+
+            curl -fsSL "$COMPOSE_URL" -o docker-compose.yml.new
+            mv docker-compose.yml.new docker-compose.yml
 
             docker compose pull
             docker compose up -d --remove-orphans

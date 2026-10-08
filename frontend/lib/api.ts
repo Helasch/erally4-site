@@ -38,7 +38,7 @@ export type ChampionshipListItem = { id: number; name: string; is_current: boole
 export async function loadChampionship(saison: string | undefined): Promise<Championship | null> {
   const path = saison && /^\d+$/.test(saison) ? `/api/championships/${saison}` : "/api/championship/current";
   try {
-    return await apiGet<Championship>(path);
+    return await apiGet<Championship | null>(path);
   } catch (e) {
     if (e instanceof ApiError && e.status === 404) return null;
     throw e;
@@ -53,12 +53,20 @@ export type StandingRow = {
   identified: boolean;
   points: number;
   per_rally?: (number | null)[];
+  evol?: number | null;
+  gained?: number | null;
+  is_new?: boolean;
 };
 
 export type Standings = {
   championship: { id: number; name: string };
   mode: "racenet" | "custom";
-  rallies: { id: number; name: string }[];
+  rallies: { id: number; name: string; round: number }[];
+  /** Rallyes après lesquels un classement existe */
+  snapshots: { id: number; name: string; round: number }[];
+  /** Classement affiché : après ce rallye (null : ancien import sans rallye) */
+  after: { id: number; name: string; round: number } | null;
+  previous: { id: number; name: string; round: number } | null;
   unidentified: number;
   standings: StandingRow[];
 };
@@ -101,4 +109,111 @@ export function formatTime(value: string): string {
 export function formatDiff(value: string): string {
   if (/^00:00:00\.000$/.test(value)) return "—";
   return "+" + formatTime(value);
+}
+
+export type RallyRef = { id: number; name: string; round: number };
+
+export type PodiumEntry = {
+  position: number;
+  name: string;
+  driver_id: number | null;
+  vehicle: string;
+  platform: string;
+  time: string;
+  diff: string;
+};
+
+export type StandingEntry = {
+  id?: number;
+  position: number;
+  name: string;
+  driver_id: number | null;
+  identified: boolean;
+  points: number;
+  evol: number | null;
+  gained: number | null;
+  is_new: boolean;
+  per_rally?: (number | null)[];
+};
+
+export type Home = {
+  championship: { id: number; name: string; mode: "racenet" | "custom" };
+  total_rounds: number;
+  completed_rounds: number;
+  last_rally:
+    | (RallyRef & { event_date: string | null; podium: PodiumEntry[]; top5: PodiumEntry[]; result_count: number })
+    | null;
+  standings: {
+    after: RallyRef | null;
+    count: number;
+    top5: StandingEntry[];
+    leader: {
+      name: string;
+      driver_id: number | null;
+      points: number;
+      wins: number;
+      gap: number | null;
+      was_leader: boolean;
+    } | null;
+  };
+  calendar: RallySummary[];
+};
+
+export type DriverListItem = {
+  id: number;
+  name: string;
+  position: number | null;
+  points: number | null;
+  rallies: number;
+  wins: number;
+  podiums: number;
+  best: number | null;
+  platform: string | null;
+  vehicle: string | null;
+};
+
+export type DriverStats = {
+  rallies: number;
+  wins: number;
+  podiums: number;
+  top10: number;
+  best: number | null;
+  average_position: number | null;
+  average_gap_ms: number | null;
+};
+
+export type DriverProfile = {
+  id: number;
+  name: string;
+  platform: string | null;
+  vehicle: string | null;
+  career: DriverStats;
+  season: {
+    championship: { id: number; name: string; mode: "racenet" | "custom" };
+    position: number | null;
+    points: number | null;
+    classified: number;
+    stats: DriverStats;
+    progression: { round: number; rally: string; position: number; points: number; classified: number }[];
+    history: {
+      rally_id: number;
+      round: number;
+      rally: string;
+      event_date: string | null;
+      position: number;
+      finishers: number;
+      time: string;
+      diff: string;
+      vehicle: string;
+      platform: string;
+      points: number | null;
+    }[];
+  } | null;
+};
+
+/** Écart en millisecondes -> "+1:23.456" */
+export function formatGapMs(ms: number): string {
+  const minutes = Math.floor(ms / 60000);
+  const seconds = ((ms % 60000) / 1000).toFixed(3).padStart(6, "0");
+  return `+${minutes}:${seconds}`;
 }

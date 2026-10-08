@@ -67,6 +67,80 @@ def compute_custom_standings(
     return ordered
 
 
+# --- Statistiques d'un pilote -------------------------------------------------
+
+
+@dataclass
+class Finish:
+    position: int
+    finishers: int
+    diff_ms: int
+
+
+@dataclass
+class DriverStats:
+    rallies: int = 0
+    wins: int = 0
+    podiums: int = 0
+    top10: int = 0
+    best: int | None = None
+    average_position: float | None = None
+    # Écart moyen au vainqueur, en millisecondes
+    average_gap_ms: int | None = None
+
+
+def driver_stats(finishes: list[Finish]) -> DriverStats:
+    if not finishes:
+        return DriverStats()
+    positions = [f.position for f in finishes]
+    return DriverStats(
+        rallies=len(finishes),
+        wins=sum(1 for p in positions if p == 1),
+        podiums=sum(1 for p in positions if p <= 3),
+        top10=sum(1 for p in positions if p <= 10),
+        best=min(positions),
+        average_position=round(sum(positions) / len(positions), 1),
+        average_gap_ms=round(sum(f.diff_ms for f in finishes) / len(finishes)),
+    )
+
+
+# --- Évolution entre deux classements -----------------------------------------
+
+
+@dataclass
+class Movement:
+    # Places gagnées (+) ou perdues (-) ; None si pas de comparaison possible
+    evol: int | None
+    # Points marqués depuis le classement précédent ; None si pas de comparaison possible
+    gained: int | None
+    # Absent du classement précédent
+    is_new: bool
+
+
+def compare_standings(
+    current: list[tuple[int | None, int, int]],
+    previous: list[tuple[int | None, int, int]] | None,
+) -> list[Movement]:
+    """Compare deux classements donnés sous forme (clé pilote, position, points).
+
+    La clé est l'identifiant du pilote, ou None pour un « WRC Player » non identifié
+    (aucune comparaison possible). Sans classement précédent, rien n'est comparé.
+    """
+    if previous is None:
+        return [Movement(None, None, False) for _ in current]
+    before = {key: (position, points) for key, position, points in previous if key is not None}
+    movements = []
+    for key, position, points in current:
+        if key is None:
+            movements.append(Movement(None, None, False))
+        elif key not in before:
+            movements.append(Movement(None, points, True))
+        else:
+            old_position, old_points = before[key]
+            movements.append(Movement(old_position - position, points - old_points, False))
+    return movements
+
+
 # --- Suggestions pour les « WRC Player » --------------------------------------
 
 

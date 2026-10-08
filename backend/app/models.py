@@ -9,6 +9,7 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     String,
+    Text,
     UniqueConstraint,
     func,
 )
@@ -114,18 +115,30 @@ class RallyResult(Base):
 
 
 class RacenetStanding(Base):
-    """Classement général tel qu'exporté par RaceNet (dernier import)."""
+    """Classement général tel qu'exporté par RaceNet, après un rallye donné."""
 
     __tablename__ = "racenet_standings"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     championship_id: Mapped[int] = mapped_column(ForeignKey("championships.id", ondelete="CASCADE"))
+    # Rallye après lequel ce classement a été exporté (NULL : import antérieur à l'historique)
+    rally_id: Mapped[int | None] = mapped_column(ForeignKey("rallies.id", ondelete="CASCADE"))
     position: Mapped[int] = mapped_column(Integer)
     driver_id: Mapped[int | None] = mapped_column(ForeignKey("drivers.id", ondelete="SET NULL"))
     raw_name: Mapped[str] = mapped_column(String(64))
     points: Mapped[int] = mapped_column(Integer)
 
     driver: Mapped[Driver | None] = relationship()
+
+
+class SiteSetting(Base):
+    """Réglages du site modifiables depuis l'admin (lien Discord…)."""
+
+    __tablename__ = "site_settings"
+
+    key: Mapped[str] = mapped_column(String(64), primary_key=True)
+    value: Mapped[str] = mapped_column(Text)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now(), onupdate=func.now())
 
 
 class Import(Base):

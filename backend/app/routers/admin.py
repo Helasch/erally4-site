@@ -31,7 +31,9 @@ from app.services import (
     not_found,
     rally_results_payload,
     scoring_table,
+    read_settings,
     validate_driver_name,
+    write_settings,
 )
 
 router = APIRouter(prefix="/api/admin")
@@ -272,8 +274,7 @@ async def preview_import(
     data = await _read_upload(file)
     parsed = _parse(data)
     c = get_championship(db, championship_id)
-    rally = _rally_for(db, rally_id) if parsed.kind == "rally" else None
-    return build_preview(db, c, rally, parsed)
+    return build_preview(db, c, _rally_for(db, rally_id), parsed)
 
 
 @router.post("/imports", status_code=201)
@@ -293,7 +294,7 @@ async def create_import(
     except (ValueError, AttributeError, TypeError):
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Résolutions invalides.") from None
     c = get_championship(db, championship_id)
-    rally = _rally_for(db, rally_id) if parsed.kind == "rally" else None
+    rally = _rally_for(db, rally_id)
     record = commit_import(db, c, rally, parsed, mapping, data, file.filename or "import.csv", session.admin_id)
     return {"id": record.id, "kind": record.kind, "row_count": record.row_count}
 
@@ -391,3 +392,20 @@ def assign_standing(standing_id: int, body: AssignDriver, db: Session = Depends(
     if row is None:
         raise not_found("Ligne de classement")
     return _assign(db, row, body)
+
+
+# --- Paramètres du site -----------------------------------------------------------------
+
+
+class SettingsBody(BaseModel):
+    discord_url: str = Field(default="", max_length=200)
+
+
+@router.get("/settings", dependencies=protected)
+def get_settings(db: Session = Depends(get_db)):
+    return read_settings(db)
+
+
+@router.put("/settings", dependencies=protected)
+def put_settings(body: SettingsBody, db: Session = Depends(get_db)):
+    return write_settings(db, body.model_dump())

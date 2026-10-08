@@ -3,24 +3,26 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.db import get_db
-from app.models import Championship, Rally
+from app.models import Championship, Driver, Rally
 from app.services import (
     championship_standings,
+    driver_profile,
+    drivers_overview,
     get_championship,
     get_rally,
+    home_payload,
     not_found,
     rally_results_payload,
+    read_settings,
     scoring_table,
 )
 
 router = APIRouter(prefix="/api")
 
 
-def _current(db: Session) -> Championship:
-    championship = db.scalar(select(Championship).where(Championship.is_current.is_(True)))
-    if championship is None:
-        raise not_found("Championnat en cours")
-    return championship
+def _current(db: Session) -> Championship | None:
+    # Aucun championnat en cours n'est un état normal (début de saison) : les routes répondent null, pas 404
+    return db.scalar(select(Championship).where(Championship.is_current.is_(True)))
 
 
 def _rally_summary(rally: Rally, index: int) -> dict:
@@ -63,19 +65,36 @@ def championship(championship_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/championships/{championship_id}/standings")
-def standings(championship_id: int, db: Session = Depends(get_db)):
+def standings(championship_id: int, apres: int | None = None, db: Session = Depends(get_db)):
+    """Classement général ; `apres` = identifiant du rallye après lequel on veut le classement."""
     c = get_championship(db, championship_id)
-    return {"championship": {"id": c.id, "name": c.name}, **championship_standings(db, c)}
+    return {"championship": {"id": c.id, "name": c.name}, **championship_standings(db, c, apres)}
+
+
+@router.get("/home")
+def home(db: Session = Depends(get_db)):
+    c = _current(db)
+    if c is None:
+        return None
+    return {**home_payload(db, c), "calendar": _championship_payload(c)["rallies"]}
+
+
+@router.get("/settings")
+def public_settings(db: Session = Depends(get_db)):
+    return read_settings(db)
 
 
 @router.get("/championship/current")
 def current_championship(db: Session = Depends(get_db)):
-    return _championship_payload(_current(db))
+    c = _current(db)
+    return _championship_payload(c) if c is not None else None
 
 
 @router.get("/championship/current/standings")
 def current_standings(db: Session = Depends(get_db)):
     c = _current(db)
+    if c is None:
+        return None
     return {"championship": {"id": c.id, "name": c.name}, **championship_standings(db, c)}
 
 
@@ -95,3 +114,26 @@ def rally(rally_id: int, db: Session = Depends(get_db)):
         "rallies": siblings,
         "results": rally_results_payload(r, scoring),
     }
+
+
+def _season(db: Session, saison: int | None) -> Championship | None:
+    if saison is not None:
+        return get_championship(db, saison)
+    return db.scalar(select(Championship).where(Championship.is_current.is_(True)))
+
+
+@router.get("/drivers")
+def drivers(saison: int | None = None, db: Session = Depends(get_db)):
+    """Pilotes du championnat (en cours par défaut) avec leurs chiffres principaux."""
+    c = _season(db, saison)
+    if c is None:
+        return {"championship": None, "drivers": []}
+    return {"championship": {"id": c.id, "name": c.name}, "drivers": drivers_overview(db, c)}
+
+
+@router.get("/drivers/{driver_id}")
+def driver(driver_id: int, saison: int | None = None, db: Session = Depends(get_db)):
+    d = db.get(Driver, driver_id)
+    if d is None:
+        raise not_found("Pilote")
+    return driver_profile(db, d, _season(db, saison))

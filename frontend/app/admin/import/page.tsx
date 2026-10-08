@@ -93,8 +93,12 @@ export default function ImportPage() {
 
   async function confirmImport() {
     if (!preview) return;
-    if (preview.kind === "rally" && !rallyId) {
-      setError("Choisissez le rallye auquel rattacher ce fichier.");
+    if (!rallyId) {
+      setError(
+        preview.kind === "rally"
+          ? "Choisissez le rallye auquel rattacher ce fichier."
+          : "Choisissez après quel rallye ce classement a été exporté.",
+      );
       return;
     }
     const chosen = Object.values(resolutions).map((n) => n.trim().toLowerCase()).filter(Boolean);
@@ -165,7 +169,11 @@ export default function ImportPage() {
           Le type (rallye ou championnat) est détecté automatiquement.
         </p>
 
-        <label htmlFor="rally">Rallye (pour un fichier de rallye)</label>
+        <label htmlFor="rally">Rallye concerné</label>
+        <p className="muted" style={{ margin: "0 0 6px" }}>
+          Fichier de rallye : le rallye des résultats. Fichier championnat : le rallye après lequel le classement a été
+          exporté.
+        </p>
         <select
           id="rally"
           value={rallyId}

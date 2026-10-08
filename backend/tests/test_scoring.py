@@ -1,8 +1,13 @@
 from app.scoring import (
     ChampionshipCandidate,
+    DriverStats,
+    Finish,
+    Movement,
     PastRallyResult,
     RallyFinish,
+    compare_standings,
     compute_custom_standings,
+    driver_stats,
     suggest_for_championship,
     suggest_for_rally,
 )
@@ -90,3 +95,30 @@ def test_championship_suggestions_exact_expected_points_first():
     ]
     suggestions = suggest_for_championship(8, candidates, names_in_file=set())
     assert [s.name for s in suggestions] == ["Bob", "Alice"]
+
+
+def test_compare_standings_movements():
+    previous = [(1, 1, 41), (2, 2, 37), (3, 3, 30)]
+    current = [(2, 1, 55), (1, 2, 50), (4, 3, 20), (3, 4, 30), (None, 5, 10)]
+    assert compare_standings(current, previous) == [
+        Movement(evol=1, gained=18, is_new=False),  # 2e -> 1er
+        Movement(evol=-1, gained=9, is_new=False),  # 1er -> 2e
+        Movement(evol=None, gained=20, is_new=True),  # nouveau pilote
+        Movement(evol=-1, gained=0, is_new=False),  # n'a pas marqué
+        Movement(evol=None, gained=None, is_new=False),  # WRC Player non identifié
+    ]
+
+
+def test_compare_standings_without_previous():
+    assert compare_standings([(1, 1, 25)], None) == [Movement(None, None, False)]
+
+
+def test_driver_stats():
+    stats = driver_stats([Finish(1, 35, 0), Finish(4, 40, 60_000), Finish(12, 38, 120_500)])
+    assert stats == DriverStats(
+        rallies=3, wins=1, podiums=1, top10=2, best=1, average_position=5.7, average_gap_ms=60_167
+    )
+
+
+def test_driver_stats_empty():
+    assert driver_stats([]) == DriverStats()
