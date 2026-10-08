@@ -777,3 +777,11 @@ a.button.primary {
   background: #f1eeec;
   color: var(--muted);
 }
+
+/* Pénalités (admin) */
+.penalty-form {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}

@@ -477,6 +477,9 @@ def build_preview(db: Session, championship: Championship, rally: Rally | None, 
         )
     if parsed.kind == "rally" and rally is not None and rally.results:
         warnings.append(f"Les {len(rally.results)} résultats déjà importés pour « {rally.name} » seront remplacés.")
+        penalties = sum(1 for r in rally.results if r.driver_id is not None and (r.penalty_ms or r.disqualified))
+        if penalties:
+            warnings.append(f"{penalties} pénalité(s) déjà décidée(s) seront conservées pour les mêmes pilotes.")
     if parsed.kind == "championship":
         if rally is None:
             warnings.append("Choisissez après quel rallye ce classement a été exporté.")
@@ -535,11 +538,21 @@ def commit_import(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Ce rallye n'appartient pas au championnat.")
 
     if parsed.kind == "rally":
+        # Les pénalités déjà décidées sont conservées pour le même pilote lors d'une réimport
+        kept = {
+            r.driver_id: (r.penalty_ms, r.disqualified, r.penalty_reason)
+            for r in rally.results
+            if r.driver_id is not None and (r.penalty_ms or r.disqualified)
+        }
         db.execute(delete(RallyResult).where(RallyResult.rally_id == rally.id))
         for r in parsed.rows:
             driver = _resolve_driver(db, r.name, r.line, resolutions)
+            penalty_ms, disqualified, reason = kept.get(driver.id if driver else None, (0, False, None))
             db.add(
                 RallyResult(
+                    penalty_ms=penalty_ms,
+                    disqualified=disqualified,
+                    penalty_reason=reason,
                     rally_id=rally.id,
                     position=r.position,
                     driver_id=driver.id if driver else None,
@@ -668,14 +681,26 @@ def _most_common(values: list[str]) -> str | None:
     return Counter(values).most_common(1)[0][0] if values else None
 
 
-def _driver_results(championship: Championship) -> dict[int, list[tuple[int, Rally, RallyResult]]]:
-    """Résultats identifiés du championnat, par pilote : (numéro de manche, rallye, résultat)."""
-    by_driver: dict[int, list[tuple[int, Rally, RallyResult]]] = defaultdict(list)
+DriverResult = tuple[int, Rally, RallyResult, Classified]
+
+
+def _driver_results(championship: Championship) -> dict[int, list[DriverResult]]:
+    """Résultats identifiés du championnat, par pilote : (manche, rallye, résultat, classement après pénalités)."""
+    by_driver: dict[int, list[DriverResult]] = defaultdict(list)
     for index, rally in enumerate(championship.rallies):
-        for result in rally.results:
+        for result, c in classified_results(rally):
             if result.driver_id is not None:
-                by_driver[result.driver_id].append((index + 1, rally, result))
+                by_driver[result.driver_id].append((index + 1, rally, result, c))
     return by_driver
+
+
+def _finishes(rows: list[DriverResult]) -> list[Finish]:
+    """Arrivées comptées dans les statistiques (les non classés en sont exclus)."""
+    return [
+        Finish(c.position, sum(1 for _, x in classified_results(rally) if x.position), c.diff_ms or 0)
+        for _, rally, _, c in rows
+        if c.position is not None
+    ]
 
 
 def drivers_overview(db: Session, championship: Championship) -> list[dict]:
@@ -688,7 +713,7 @@ def drivers_overview(db: Session, championship: Championship) -> list[dict]:
     rows = []
     for driver_id, driver in drivers.items():
         mine = results.get(driver_id, [])
-        stats = driver_stats([Finish(r.position, len(rally.results), r.diff_ms) for _, rally, r in mine])
+        stats = driver_stats(_finishes(mine))
         standing = standings.get(driver_id)
         rows.append(
             {
@@ -701,9 +726,9 @@ def drivers_overview(db: Session, championship: Championship) -> list[dict]:
                 "wins": stats.wins,
                 "podiums": stats.podiums,
                 "best": stats.best,
-                "platform": _most_common([r.platform for _, _, r in mine]),
+                "platform": _most_common([r.platform for _, _, r, _ in mine]),
                 "vehicle": (driver.account.vehicle if driver.account and driver.account.vehicle else None)
-                or _most_common([r.vehicle for _, _, r in mine]),
+                or _most_common([r.vehicle for _, _, r, _ in mine]),
             }
         )
     rows.sort(key=lambda r: (r["position"] is None, r["position"] or 0, r["name"].lower()))
@@ -712,19 +737,20 @@ def drivers_overview(db: Session, championship: Championship) -> list[dict]:
 
 def driver_profile(db: Session, driver: Driver, championship: Championship | None) -> dict:
     """Profil public d'un pilote : statistiques du championnat, historique, évolution, carrière."""
-    career_rows = db.execute(
-        select(RallyResult, Rally)
-        .join(Rally, RallyResult.rally_id == Rally.id)
-        .where(RallyResult.driver_id == driver.id)
-    ).all()
-    career = driver_stats([Finish(r.position, len(rally.results), r.diff_ms) for r, rally in career_rows])
+    career_rallies = db.scalars(
+        select(Rally).join(RallyResult, RallyResult.rally_id == Rally.id).where(RallyResult.driver_id == driver.id)
+    ).unique().all()
+    career_rows: list[DriverResult] = [
+        (0, rally, r, c) for rally in career_rallies for r, c in classified_results(rally) if r.driver_id == driver.id
+    ]
+    career = driver_stats(_finishes(career_rows))
 
     season = None
     if championship is not None:
         rallies = list(championship.rallies)
         mine = _driver_results(championship).get(driver.id, [])
         scoring = scoring_table(championship) if championship.scoring_mode == "custom" else None
-        stats = driver_stats([Finish(r.position, len(rally.results), r.diff_ms) for _, rally, r in mine])
+        stats = driver_stats(_finishes(mine))
 
         # Position au général après chaque manche (courbe de progression)
         progression = []
@@ -747,6 +773,7 @@ def driver_profile(db: Session, driver: Driver, championship: Championship | Non
             "championship": {"id": championship.id, "name": championship.name, "mode": championship.scoring_mode},
             "position": standing["position"] if standing else None,
             "points": standing["points"] if standing else None,
+            "adjustment_reasons": standing.get("adjustment_reasons", []) if standing else [],
             "classified": len(current),
             "stats": stats.__dict__,
             "progression": progression,
@@ -756,19 +783,20 @@ def driver_profile(db: Session, driver: Driver, championship: Championship | Non
                     "round": round_,
                     "rally": rally.name,
                     **rally_dates(rally),
-                    "position": r.position,
-                    "finishers": len(rally.results),
-                    "time": format_time_ms(r.time_ms),
-                    "diff": format_time_ms(r.diff_ms),
+                    "position": c.position,
+                    "finishers": sum(1 for _, x in classified_results(rally) if x.position),
+                    "time": format_time_ms(c.time_ms),
+                    "diff": format_time_ms(c.diff_ms) if c.diff_ms is not None else None,
                     "vehicle": r.vehicle,
                     "platform": r.platform,
-                    "points": scoring.get(r.position, 0) if scoring is not None else None,
+                    "points": (scoring.get(c.position, 0) if c.position else 0) if scoring is not None else None,
+                    **_penalty_info(r),
                 }
-                for round_, rally, r in mine
+                for round_, rally, r, c in mine
             ],
         }
 
-    all_results = [r for r, _ in career_rows]
+    all_results = [r for _, _, r, _ in career_rows]
     account = driver.account
     return {
         "id": driver.id,
