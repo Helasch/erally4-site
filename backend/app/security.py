@@ -43,7 +43,8 @@ def burn_verify_time(password: str) -> None:
 
 
 def _token_hash(token: str) -> str:
-    return hmac.new(settings.session_secret.encode(), token.encode(), hashlib.sha256).hexdigest()
+    # Le jeton fait 256 bits d'aléa : son empreinte SHA-256 suffit, aucun secret serveur n'est nécessaire
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def _now() -> datetime:

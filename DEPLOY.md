@@ -22,7 +22,6 @@ Sur le serveur, dans le dossier du projet :
    ```
    DB_USER=...
    DB_PASSWORD=...
-   SESSION_SECRET=...   # 32 caractères minimum, ex. openssl rand -hex 32
    UMAMI_SITE_ID=       # optionnel
    ```
 
@@ -70,7 +69,6 @@ Dépôt → Settings → Secrets and variables → Actions.
 | `SSH_PRIVATE_KEY` | Secret | contenu de `erally4_deploy` |
 | `DB_USER` | Secret | fourni par l'admin |
 | `DB_PASSWORD` | Secret | fourni par l'admin (éviter le caractère `'`) |
-| `SESSION_SECRET` | Secret | chaîne aléatoire |
 | `UMAMI_SITE_ID` | Variable (optionnelle) | ID du site sur https://stats.devnest.fr |
 | `DEPLOY_ENABLED` | Variable | `true` pour activer le déploiement automatique |
 
