@@ -14,7 +14,6 @@ class Settings:
     db_user = os.environ.get("DB_USER", "erally4")
     db_password = os.environ.get("DB_PASSWORD", "")
 
-    session_secret = os.environ.get("SESSION_SECRET", "")
     session_hours = int(os.environ.get("SESSION_HOURS", "168"))
     cookie_secure = _bool("COOKIE_SECURE", True)
 
@@ -30,8 +29,3 @@ class Settings:
 
 
 settings = Settings()
-
-
-def check_settings() -> None:
-    if len(settings.session_secret) < 32:
-        raise RuntimeError("SESSION_SECRET doit faire au moins 32 caractères.")

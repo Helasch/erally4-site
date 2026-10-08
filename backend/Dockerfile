@@ -14,7 +14,7 @@ FROM base AS test
 COPY requirements-dev.txt .
 RUN pip install -r requirements-dev.txt
 COPY . .
-RUN SESSION_SECRET=test-secret-test-secret-test-secret pytest -q
+RUN pytest -q
 
 # --- Image de production -------------------------------------------------------------
 FROM base AS runtime

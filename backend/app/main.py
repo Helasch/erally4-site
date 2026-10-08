@@ -2,11 +2,9 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
-from app.config import check_settings
 from app.db import engine
 from app.routers import admin, public
 
-check_settings()
 
 app = FastAPI(title="eRally4 Cup API", docs_url=None, redoc_url=None, openapi_url=None)
 app.include_router(public.router)
