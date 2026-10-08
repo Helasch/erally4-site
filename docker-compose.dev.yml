@@ -28,7 +28,6 @@ services:
       - DB_NAME=erally4
       - DB_USER=erally4
       - DB_PASSWORD=erally4
-      - SESSION_SECRET=dev-secret-ne-pas-utiliser-en-prod
       # Cookies sans HTTPS en local
       - COOKIE_SECURE=false
     ports:
