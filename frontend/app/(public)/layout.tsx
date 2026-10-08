@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
-import Script from "next/script";
 import { apiGet, formatDiff, formatTime, type Home } from "@/lib/api";
 import { shortRallyName } from "@/lib/format";
 import SiteNav from "./site-nav";
@@ -15,7 +14,6 @@ async function safe<T>(path: string): Promise<T | null> {
 }
 
 export default async function PublicLayout({ children }: { children: ReactNode }) {
-  const umamiId = process.env.UMAMI_SITE_ID;
   const [home, settings] = await Promise.all([
     safe<Home>("/api/home"),
     safe<{ discord_url: string }>("/api/settings"),
@@ -87,10 +85,6 @@ export default async function PublicLayout({ children }: { children: ReactNode }
           ni à Codemasters. Résultats issus de RaceNet.
         </p>
       </footer>
-
-      {umamiId && (
-        <Script src="https://stats.devnest.fr/script.js" data-website-id={umamiId} strategy="afterInteractive" />
-      )}
     </div>
   );
 }

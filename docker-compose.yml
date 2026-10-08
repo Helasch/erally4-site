@@ -15,7 +15,6 @@ services:
     container_name: erally4-web
     environment:
       - API_URL=http://api:8000
-      - UMAMI_SITE_ID=${UMAMI_SITE_ID:-}
     tmpfs:
       - /tmp
       - /app/.next/cache:mode=1777

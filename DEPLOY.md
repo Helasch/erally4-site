@@ -9,20 +9,20 @@ Deux façons de les mettre en production.
 
 ## Option 1 — Manuel (actuelle)
 
-Sur le serveur, dans le dossier du projet :
+Sur le serveur :
 
-1. Récupérer le compose :
+1. Créer le dossier du projet et récupérer le compose :
 
    ```bash
+   mkdir -p /opt/docker/erally4-site && cd /opt/docker/erally4-site
    curl -O https://raw.githubusercontent.com/Helasch/erally4-site/main/docker-compose.yml
    ```
 
-2. Créer un `.env` à côté (modèle : `.env.example`) :
+2. Créer un `.env` à côté avec les identifiants de la base `erally4` — ce sont les **deux seules valeurs** à fournir :
 
    ```
    DB_USER=...
    DB_PASSWORD=...
-   UMAMI_SITE_ID=       # optionnel
    ```
 
 3. Lancer (et relancer à chaque mise à jour) :
@@ -69,10 +69,9 @@ Dépôt → Settings → Secrets and variables → Actions.
 | `SSH_PRIVATE_KEY` | Secret | contenu de `erally4_deploy` |
 | `DB_USER` | Secret | fourni par l'admin |
 | `DB_PASSWORD` | Secret | fourni par l'admin (éviter le caractère `'`) |
-| `UMAMI_SITE_ID` | Variable (optionnelle) | ID du site sur https://stats.devnest.fr |
 | `DEPLOY_ENABLED` | Variable | `true` pour activer le déploiement automatique |
 
 ## Vérification
 
-- https://erally4.devnest.fr → page d'accueil, message « Bienvenue sur l'API eRally4 Cup » ;
+- https://erally4.devnest.fr → page d'accueil du site ;
 - https://erally4.devnest.fr/health → `{"status":"ok","db":"up"}` (URL à mettre dans Uptime Kuma).
