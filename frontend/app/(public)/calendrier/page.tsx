@@ -23,8 +23,8 @@ export default async function RalliesPage({ searchParams }: { searchParams: Prom
             {championship && seasons.length > 1 && (
               <NavSelect
                 label="Saison"
-                value={`/rallyes?saison=${championship.id}`}
-                options={seasons.map((s) => ({ href: `/rallyes?saison=${s.id}`, label: s.name }))}
+                value={`/calendrier?saison=${championship.id}`}
+                options={seasons.map((s) => ({ href: `/calendrier?saison=${s.id}`, label: s.name }))}
               />
             )}
           </header>

@@ -10,8 +10,8 @@ export default function SectionTabs() {
   const query = saison ? `?saison=${saison}` : "";
 
   const tabs = [
-    { href: "/", label: "Classement", active: pathname === "/" },
-    { href: "/rallyes", label: "Rallyes", active: pathname.startsWith("/rallyes") },
+    { href: "/classements", label: "Classement", active: pathname.startsWith("/classements") },
+    { href: "/calendrier", label: "Rallyes", active: pathname.startsWith("/calendrier") || pathname.startsWith("/rallyes") },
   ];
 
   return (

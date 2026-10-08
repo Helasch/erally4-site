@@ -8,8 +8,10 @@ from app.services import (
     championship_standings,
     get_championship,
     get_rally,
+    home_payload,
     not_found,
     rally_results_payload,
+    read_settings,
     scoring_table,
 )
 
@@ -63,9 +65,21 @@ def championship(championship_id: int, db: Session = Depends(get_db)):
 
 
 @router.get("/championships/{championship_id}/standings")
-def standings(championship_id: int, db: Session = Depends(get_db)):
+def standings(championship_id: int, apres: int | None = None, db: Session = Depends(get_db)):
+    """Classement général ; `apres` = identifiant du rallye après lequel on veut le classement."""
     c = get_championship(db, championship_id)
-    return {"championship": {"id": c.id, "name": c.name}, **championship_standings(db, c)}
+    return {"championship": {"id": c.id, "name": c.name}, **championship_standings(db, c, apres)}
+
+
+@router.get("/home")
+def home(db: Session = Depends(get_db)):
+    c = _current(db)
+    return {**home_payload(db, c), "calendar": _championship_payload(c)["rallies"]}
+
+
+@router.get("/settings")
+def public_settings(db: Session = Depends(get_db)):
+    return read_settings(db)
 
 
 @router.get("/championship/current")

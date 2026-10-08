@@ -3,6 +3,8 @@
 import os
 import re
 import secrets
+from collections import defaultdict
+from dataclasses import dataclass
 from datetime import datetime
 
 from fastapi import HTTPException, status
@@ -11,11 +13,12 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.csv_import import ANONYMOUS_NAME, ChampionshipRow, ParsedCsv, RallyRow, format_time_ms
-from app.models import Championship, Driver, Import, RacenetStanding, Rally, RallyResult
+from app.models import Championship, Driver, Import, RacenetStanding, Rally, RallyResult, SiteSetting
 from app.scoring import (
     ChampionshipCandidate,
     PastRallyResult,
     RallyFinish,
+    compare_standings,
     compute_custom_standings,
     suggest_for_championship,
     suggest_for_rally,
@@ -99,47 +102,66 @@ def rally_results_payload(rally: Rally, scoring: dict[int, int] | None) -> list[
     return payload
 
 
-def championship_standings(db: Session, championship: Championship) -> dict:
-    rallies = [r for r in championship.rallies]
+@dataclass
+class Snapshot:
+    """Classement général après un rallye (rally None : ancien import sans rallye associé)."""
+
+    rally: Rally | None
+    entries: list[dict]
+    unidentified: int
+
+
+def _rally_ref(rally: Rally | None, rallies: list[Rally]) -> dict | None:
+    if rally is None:
+        return None
+    return {"id": rally.id, "name": rally.name, "round": rallies.index(rally) + 1}
+
+
+def standings_snapshots(db: Session, championship: Championship) -> list[Snapshot]:
+    """Un classement général par rallye disputé, dans l'ordre du calendrier."""
+    rallies = list(championship.rallies)
+
     if championship.scoring_mode == "custom":
         scoring = scoring_table(championship)
-        per_rally = [
-            [
-                RallyFinish(r.driver_id, r.driver.name, r.position)
-                for r in rally.results
-                if r.driver_id is not None
-            ]
+        finishes = [
+            [RallyFinish(r.driver_id, r.driver.name, r.position) for r in rally.results if r.driver_id is not None]
             for rally in rallies
         ]
-        entries = compute_custom_standings(per_rally, scoring)
-        unidentified = sum(1 for rally in rallies for r in rally.results if r.driver_id is None)
-        return {
-            "mode": "custom",
-            "rallies": [{"id": r.id, "name": r.name} for r in rallies],
-            "unidentified": unidentified,
-            "standings": [
-                {
-                    "position": e.position,
-                    "name": e.name,
-                    "driver_id": e.driver_id,
-                    "identified": True,
-                    "points": e.points,
-                    "per_rally": e.per_rally,
-                }
-                for e in entries
-            ],
-        }
+        snapshots = []
+        for index, rally in enumerate(rallies):
+            if not rally.results:
+                continue
+            entries = compute_custom_standings(finishes[: index + 1], scoring)
+            snapshots.append(
+                Snapshot(
+                    rally,
+                    [
+                        {
+                            "position": e.position,
+                            "name": e.name,
+                            "driver_id": e.driver_id,
+                            "identified": True,
+                            "points": e.points,
+                            "per_rally": e.per_rally + [None] * (len(rallies) - len(e.per_rally)),
+                        }
+                        for e in entries
+                    ],
+                    sum(1 for r in rallies[: index + 1] for x in r.results if x.driver_id is None),
+                )
+            )
+        return snapshots
 
     rows = db.scalars(
         select(RacenetStanding)
         .where(RacenetStanding.championship_id == championship.id)
         .order_by(RacenetStanding.position)
     ).all()
-    return {
-        "mode": "racenet",
-        "rallies": [{"id": r.id, "name": r.name} for r in rallies],
-        "unidentified": sum(1 for r in rows if r.driver_id is None),
-        "standings": [
+    by_rally: dict[int | None, list[RacenetStanding]] = defaultdict(list)
+    for row in rows:
+        by_rally[row.rally_id].append(row)
+
+    def entries(group: list[RacenetStanding]) -> list[dict]:
+        return [
             {
                 "id": r.id,
                 "position": r.position,
@@ -148,8 +170,121 @@ def championship_standings(db: Session, championship: Championship) -> dict:
                 "identified": r.driver_id is not None,
                 "points": r.points,
             }
-            for r in rows
-        ],
+            for r in group
+        ]
+
+    snapshots = [
+        Snapshot(rally, entries(by_rally[rally.id]), sum(1 for r in by_rally[rally.id] if r.driver_id is None))
+        for rally in rallies
+        if rally.id in by_rally
+    ]
+    if not snapshots and None in by_rally:
+        legacy = by_rally[None]
+        snapshots = [Snapshot(None, entries(legacy), sum(1 for r in legacy if r.driver_id is None))]
+    return snapshots
+
+
+def championship_standings(db: Session, championship: Championship, after_rally_id: int | None = None) -> dict:
+    """Classement général après un rallye (par défaut le dernier), avec évolution par rapport au précédent."""
+    rallies = list(championship.rallies)
+    snapshots = standings_snapshots(db, championship)
+    base = {
+        "mode": championship.scoring_mode,
+        "rallies": [{"id": r.id, "name": r.name, "round": i + 1} for i, r in enumerate(rallies)],
+        "snapshots": [_rally_ref(s.rally, rallies) for s in snapshots if s.rally is not None],
+    }
+    if not snapshots:
+        return {**base, "after": None, "previous": None, "unidentified": 0, "standings": []}
+
+    index = len(snapshots) - 1
+    if after_rally_id is not None:
+        index = next((i for i, s in enumerate(snapshots) if s.rally and s.rally.id == after_rally_id), None)
+        if index is None:
+            raise not_found("Classement après ce rallye")
+    current = snapshots[index]
+    previous = snapshots[index - 1] if index > 0 else None
+
+    moves = compare_standings(
+        [(e["driver_id"], e["position"], e["points"]) for e in current.entries],
+        [(e["driver_id"], e["position"], e["points"]) for e in previous.entries] if previous else None,
+    )
+    standings = [
+        {**entry, "evol": move.evol, "gained": move.gained, "is_new": move.is_new}
+        for entry, move in zip(current.entries, moves)
+    ]
+    return {
+        **base,
+        "after": _rally_ref(current.rally, rallies),
+        "previous": _rally_ref(previous.rally, rallies) if previous else None,
+        "unidentified": current.unidentified,
+        "standings": standings,
+    }
+
+
+def _podium_entry(result: RallyResult) -> dict:
+    return {
+        "position": result.position,
+        "name": display_name(result.driver, result.raw_name),
+        "driver_id": result.driver_id,
+        "vehicle": result.vehicle,
+        "platform": result.platform,
+        "time": format_time_ms(result.time_ms),
+        "diff": format_time_ms(result.diff_ms),
+    }
+
+
+def home_payload(db: Session, championship: Championship) -> dict:
+    """Données de la page d'accueil : dernier rallye, podium, chiffres clés, top 5, calendrier."""
+    rallies = list(championship.rallies)
+    done = [r for r in rallies if r.results]
+    last = done[-1] if done else None
+    standings = championship_standings(db, championship)
+    table = standings["standings"]
+
+    leader = table[0] if table else None
+    second = next((e for e in table if e["position"] > (leader["position"] if leader else 0)), None)
+    leader_wins = (
+        sum(1 for r in done if r.results[0].driver_id is not None and r.results[0].driver_id == leader["driver_id"])
+        if leader and leader["driver_id"] is not None
+        else 0
+    )
+    leader_was = None
+    if standings["previous"] is not None:
+        before = championship_standings(db, championship, standings["previous"]["id"])["standings"]
+        leader_was = before[0]["driver_id"] if before else None
+
+    return {
+        "championship": {"id": championship.id, "name": championship.name, "mode": championship.scoring_mode},
+        "total_rounds": len(rallies),
+        "completed_rounds": len(done),
+        "last_rally": (
+            {
+                **_rally_ref(last, rallies),
+                "event_date": last.event_date,
+                "podium": [_podium_entry(r) for r in last.results[:3]],
+                "top5": [_podium_entry(r) for r in last.results[:5]],
+                "result_count": len(last.results),
+            }
+            if last
+            else None
+        ),
+        "standings": {
+            "after": standings["after"],
+            "count": len(table),
+            "top5": table[:5],
+            "leader": (
+                {
+                    "name": leader["name"],
+                    "driver_id": leader["driver_id"],
+                    "points": leader["points"],
+                    "wins": leader_wins,
+                    "gap": leader["points"] - second["points"] if second else None,
+                    "was_leader": leader_was is not None and leader_was == leader["driver_id"],
+                }
+                if leader
+                else None
+            ),
+        },
     }
 
 
@@ -170,15 +305,15 @@ def _rally_history(db: Session, championship: Championship, exclude_rally_id: in
     ]
 
 
-def _championship_candidates(db: Session, championship: Championship) -> list[ChampionshipCandidate]:
-    previous = {
-        s.driver_id: s.points
-        for s in db.scalars(
-            select(RacenetStanding).where(
-                RacenetStanding.championship_id == championship.id, RacenetStanding.driver_id.is_not(None)
-            )
-        )
-    }
+def _championship_candidates(
+    db: Session, championship: Championship, rally: Rally | None
+) -> list[ChampionshipCandidate]:
+    # Classement de référence : le dernier importé avant ce rallye (ou le dernier tout court)
+    snapshots = [s for s in standings_snapshots(db, championship) if championship.scoring_mode == "racenet"]
+    if rally is not None:
+        snapshots = [s for s in snapshots if s.rally is not None and s.rally.order_index < rally.order_index]
+    reference = snapshots[-1].entries if snapshots else []
+    previous = {e["driver_id"]: e["points"] for e in reference if e["driver_id"] is not None}
     known: dict[int, str] = {}
     for result, driver in db.execute(
         select(RallyResult, Driver)
@@ -226,7 +361,7 @@ def build_preview(db: Session, championship: Championship, rally: Rally | None, 
                 ]
             rows.append(row)
     else:
-        candidates = _championship_candidates(db, championship)
+        candidates = _championship_candidates(db, championship, rally)
         for r in parsed.rows:
             assert isinstance(r, ChampionshipRow)
             row = {
@@ -252,6 +387,13 @@ def build_preview(db: Session, championship: Championship, rally: Rally | None, 
         )
     if parsed.kind == "rally" and rally is not None and rally.results:
         warnings.append(f"Les {len(rally.results)} résultats déjà importés pour « {rally.name} » seront remplacés.")
+    if parsed.kind == "championship":
+        if rally is None:
+            warnings.append("Choisissez après quel rallye ce classement a été exporté.")
+        elif db.scalar(
+            select(RacenetStanding.id).where(RacenetStanding.rally_id == rally.id).limit(1)
+        ) is not None:
+            warnings.append(f"Le classement déjà importé après « {rally.name} » sera remplacé.")
 
     return {
         "kind": parsed.kind,
@@ -292,11 +434,17 @@ def commit_import(
     admin_id: int,
 ) -> Import:
     """Enregistre l'import. `resolutions` associe le numéro de ligne d'un « WRC Player » au pseudo choisi."""
+    if rally is None:
+        message = (
+            "Choisissez le rallye correspondant au fichier."
+            if parsed.kind == "rally"
+            else "Choisissez après quel rallye ce classement a été exporté."
+        )
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, message)
+    if rally.championship_id != championship.id:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Ce rallye n'appartient pas au championnat.")
+
     if parsed.kind == "rally":
-        if rally is None:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Choisissez le rallye correspondant au fichier.")
-        if rally.championship_id != championship.id:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Ce rallye n'appartient pas au championnat.")
         db.execute(delete(RallyResult).where(RallyResult.rally_id == rally.id))
         for r in parsed.rows:
             driver = _resolve_driver(db, r.name, r.line, resolutions)
@@ -313,12 +461,19 @@ def commit_import(
                 )
             )
     else:
-        db.execute(delete(RacenetStanding).where(RacenetStanding.championship_id == championship.id))
+        # Remplace le classement de ce rallye, et les anciens imports sans rallye associé
+        db.execute(
+            delete(RacenetStanding).where(
+                RacenetStanding.championship_id == championship.id,
+                (RacenetStanding.rally_id == rally.id) | RacenetStanding.rally_id.is_(None),
+            )
+        )
         for r in parsed.rows:
             driver = _resolve_driver(db, r.name, r.line, resolutions)
             db.add(
                 RacenetStanding(
                     championship_id=championship.id,
+                    rally_id=rally.id,
                     position=r.position,
                     driver_id=driver.id if driver else None,
                     raw_name=r.name,
@@ -329,7 +484,7 @@ def commit_import(
     record = Import(
         kind=parsed.kind,
         championship_id=championship.id,
-        rally_id=rally.id if parsed.kind == "rally" and rally else None,
+        rally_id=rally.id,
         original_filename=original_filename[:255],
         stored_filename=_store_raw_file(data, original_filename),
         row_count=len(parsed.rows),
@@ -339,3 +494,36 @@ def commit_import(
     db.commit()
     db.expire_all()
     return record
+
+
+# --- Paramètres du site ------------------------------------------------------------
+
+_DISCORD_INVITE = re.compile(r"^https://(discord\.gg|discord\.com/invite)/[A-Za-z0-9-]{2,64}/?$")
+
+# Réglages connus, avec leur valeur par défaut et leur validation
+SETTINGS = {
+    "discord_url": ("", lambda v: v == "" or bool(_DISCORD_INVITE.match(v)), "Lien d'invitation Discord invalide "
+                    "(attendu : https://discord.gg/… ou https://discord.com/invite/…)."),
+}
+
+
+def read_settings(db: Session) -> dict:
+    stored = {s.key: s.value for s in db.scalars(select(SiteSetting).where(SiteSetting.key.in_(SETTINGS)))}
+    return {key: stored.get(key, default) for key, (default, _, _) in SETTINGS.items()}
+
+
+def write_settings(db: Session, values: dict) -> dict:
+    for key, value in values.items():
+        if key not in SETTINGS:
+            continue
+        _, valid, message = SETTINGS[key]
+        value = (value or "").strip()
+        if not valid(value):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, message)
+        setting = db.get(SiteSetting, key)
+        if setting is None:
+            db.add(SiteSetting(key=key, value=value))
+        else:
+            setting.value = value
+    db.commit()
+    return read_settings(db)

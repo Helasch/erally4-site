@@ -1,0 +1,1081 @@
+/* ============================================================================
+   Site public — d'après les maquettes « Site eRally4 Cup »
+   Toutes les règles sont préfixées par .site pour ne pas toucher à l'admin.
+   ========================================================================== */
+
+.site {
+  --s-red: #9e0b12;
+  --s-red-bright: #d3121d;
+  --s-red-text: #b3111b;
+  --s-black: #161012;
+  --s-black-2: #1f1517;
+  --s-ink: #1b1718;
+  --s-grey-bg: #ecebe9;
+  --s-card: #ffffff;
+  --s-tile: #f4f2f0;
+  --s-line: #e6e2e0;
+  --s-muted: #716a6b;
+  --s-pos: #6d6768;
+  --s-up: #1f6fb5;
+  --s-down: #c4600e;
+  --s-display: var(--font-display), "Arial Narrow", sans-serif;
+  --s-body: var(--font-body), system-ui, sans-serif;
+  --s-max: 1180px;
+
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--s-grey-bg);
+  color: var(--s-ink);
+  font-family: var(--s-body);
+}
+
+.site-main {
+  flex: 1;
+}
+
+/* Pages pas encore refaites (étape suivante) : largeur contenue */
+.site-main > main {
+  max-width: 960px;
+  margin: 0 auto;
+  padding: 24px 16px 48px;
+}
+
+.site a {
+  color: inherit;
+}
+
+.site .driver-link {
+  text-decoration: none;
+}
+
+.site .driver-link:hover {
+  color: var(--s-red-text);
+  text-decoration: underline;
+}
+
+/* --- Navigation ---------------------------------------------------------------- */
+
+.site .nav {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  background: var(--s-red);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+}
+
+.site .nav-inner {
+  max-width: var(--s-max);
+  margin: 0 auto;
+  height: 64px;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.site .nav-logo {
+  display: block;
+  flex: none;
+}
+
+.site .nav-logo img {
+  display: block;
+  width: auto;
+  height: 44px;
+}
+
+.site .nav-links {
+  display: flex;
+  align-items: stretch;
+  gap: 28px;
+  height: 100%;
+  flex: 1;
+}
+
+.site .nav-links a {
+  position: relative;
+  display: flex;
+  align-items: center;
+  font-family: var(--s-display);
+  font-weight: 700;
+  font-size: 1.02rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.82);
+  text-decoration: none;
+}
+
+.site .nav-links a:hover,
+.site .nav-links a.active {
+  color: #fff;
+}
+
+.site .nav-links a.active::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  background: #fff;
+}
+
+.site .nav-cta {
+  flex: none;
+  padding: 9px 22px;
+  background: #fff;
+  color: var(--s-red);
+  font-family: var(--s-display);
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-decoration: none;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 10px) 100%, 0 100%);
+}
+
+.site .nav-cta:hover {
+  background: #f3e6e6;
+}
+
+.site .nav-cta-mobile,
+.site .nav-burger {
+  display: none;
+}
+
+/* --- Bandeau « dernier résultat » ------------------------------------------- */
+
+.site .ticker {
+  background: var(--s-black);
+  color: rgba(255, 255, 255, 0.85);
+  font-size: 0.85rem;
+}
+
+.site .ticker-inner {
+  max-width: var(--s-max);
+  margin: 0 auto;
+  padding: 0 16px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  overflow: hidden;
+}
+
+.site .ticker-label {
+  flex: none;
+  padding: 3px 10px;
+  background: var(--s-red-bright);
+  color: #fff;
+  font-family: var(--s-display);
+  font-weight: 800;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.site .ticker-podium {
+  display: flex;
+  gap: 22px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+}
+
+.site .ticker-podium b {
+  color: #ff5a5f;
+  font-family: var(--s-display);
+}
+
+.site .ticker-time {
+  color: rgba(255, 255, 255, 0.5);
+  font-variant-numeric: tabular-nums;
+}
+
+.site .ticker-link {
+  flex: none;
+  color: #fff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.site .ticker-link:hover {
+  text-decoration: underline;
+}
+
+/* --- Boutons et liens -------------------------------------------------------- */
+
+.site .btn {
+  display: inline-block;
+  padding: 13px 26px;
+  font-family: var(--s-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  text-decoration: none;
+  text-align: center;
+}
+
+.site .btn-red {
+  background: var(--s-red-bright);
+  color: #fff;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+
+.site .btn-red:hover {
+  background: #e8202b;
+}
+
+.site .btn-outline {
+  border: 2px solid #fff;
+  color: #fff;
+  padding: 11px 24px;
+}
+
+.site .btn-outline:hover {
+  background: #fff;
+  color: var(--s-black);
+}
+
+.site .text-link {
+  display: inline-block;
+  margin-top: 16px;
+  color: var(--s-red-text);
+  font-weight: 700;
+  text-underline-offset: 3px;
+}
+
+/* --- En-tête de l'accueil ---------------------------------------------------- */
+
+.site .hero {
+  position: relative;
+  overflow: hidden;
+  background: var(--s-black);
+  color: #fff;
+}
+
+/* Diagonale rouge à droite */
+.site .hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 0 auto;
+  width: 44%;
+  background: linear-gradient(160deg, #b40d16, var(--s-red) 70%);
+  clip-path: polygon(30% 0, 100% 0, 100% 100%, 0 100%);
+}
+
+/* Filigrane « eRally » */
+.site .hero::after,
+.site .page-head::after {
+  content: "eRally";
+  position: absolute;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  line-height: 1;
+  color: transparent;
+  -webkit-text-stroke: 1.5px rgba(255, 255, 255, 0.07);
+  pointer-events: none;
+  user-select: none;
+}
+
+.site .hero::after {
+  left: -2%;
+  bottom: -8%;
+  font-size: clamp(10rem, 26vw, 22rem);
+}
+
+.site .hero-inner {
+  position: relative;
+  z-index: 1;
+  max-width: var(--s-max);
+  margin: 0 auto;
+  padding: 72px 16px 80px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  align-items: center;
+  gap: 48px;
+}
+
+.site .hero-kicker {
+  margin: 0 0 14px;
+  color: #ff8e92;
+  font-family: var(--s-display);
+  font-weight: 700;
+  font-size: 1rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.site .hero-title {
+  margin: 0;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(3rem, 8vw, 6rem);
+  line-height: 0.9;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+  color: #fff;
+}
+
+.site .hero-text {
+  max-width: 34rem;
+  margin: 22px 0 30px;
+  font-size: 1.15rem;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.site .hero-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+}
+
+.site .hero-empty .hero-inner {
+  grid-template-columns: 1fr;
+}
+
+/* Carte podium */
+.site .podium-card {
+  background: var(--s-card);
+  color: var(--s-ink);
+  padding: 22px 24px 20px;
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+}
+
+.site .podium-card header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--s-line);
+}
+
+.site .podium-card h2 {
+  margin: 0;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.7rem;
+  text-transform: uppercase;
+  color: var(--s-ink);
+}
+
+.site .podium-card header span {
+  color: var(--s-muted);
+  font-size: 0.85rem;
+  text-align: right;
+}
+
+.site .podium-card ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site .podium-card li {
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--s-line);
+}
+
+.site .podium-pos {
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 2.6rem;
+  line-height: 1;
+  color: var(--s-pos);
+}
+
+.site .podium-card li.p1 .podium-pos {
+  color: var(--s-red-text);
+}
+
+.site .podium-driver {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  font-weight: 600;
+  font-size: 1.05rem;
+}
+
+.site .podium-driver small {
+  color: var(--s-muted);
+  font-weight: 400;
+  font-size: 0.85rem;
+}
+
+.site .podium-time {
+  font-family: var(--s-display);
+  font-weight: 800;
+  font-size: 1.2rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- Chiffres clés ------------------------------------------------------------- */
+
+.site .stats {
+  background: var(--s-card);
+  border-bottom: 1px solid var(--s-line);
+}
+
+.site .stats-inner {
+  max-width: var(--s-max);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.site .stat {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 26px 24px;
+  border-left: 1px solid var(--s-line);
+}
+
+.site .stat:first-child {
+  border-left: none;
+}
+
+.site .stat strong {
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 2.8rem;
+  line-height: 1;
+  color: var(--s-red-text);
+}
+
+.site .stat span {
+  color: var(--s-muted);
+  font-size: 0.8rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* --- Bandes de contenu et cartes ------------------------------------------- */
+
+.site .band {
+  background: var(--s-card);
+}
+
+.site .band-grey {
+  background: var(--s-grey-bg);
+}
+
+.site .band-inner {
+  max-width: var(--s-max);
+  margin: 0 auto;
+  padding: 56px 16px;
+}
+
+.site .cards-2 {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 24px;
+  align-items: start;
+}
+
+.site .card-block {
+  background: var(--s-card);
+  padding: 24px 26px 22px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.site .card-head,
+.site .section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px 16px;
+  margin-bottom: 14px;
+}
+
+.site .card-head h2,
+.site .section-head h2 {
+  margin: 0;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  text-transform: uppercase;
+  color: var(--s-ink);
+  line-height: 1;
+}
+
+.site .card-head h2 {
+  font-size: 1.8rem;
+}
+
+.site .section-head h2 {
+  font-size: clamp(2.2rem, 5vw, 3.2rem);
+}
+
+.site .card-head span,
+.site .section-head span {
+  color: var(--s-muted);
+  font-size: 0.9rem;
+}
+
+.site .empty {
+  margin: 0;
+  padding: 20px 0;
+  color: var(--s-muted);
+}
+
+/* Tableaux de classement */
+.site .rank-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--s-body);
+  font-size: 1rem;
+  color: var(--s-ink);
+}
+
+.site .rank-table th,
+.site .rank-table td {
+  padding: 11px 8px;
+  border: none;
+  text-align: left;
+  white-space: nowrap;
+}
+
+.site .rank-table th {
+  padding-top: 4px;
+  font-family: var(--s-body);
+  font-weight: 600;
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--s-muted);
+  border-bottom: 1px solid var(--s-line);
+}
+
+.site .rank-table tbody tr + tr td {
+  border-top: 1px solid var(--s-line);
+}
+
+.site .rank-table tbody tr:hover td {
+  background: #faf8f7;
+}
+
+.site .rank-table .c {
+  text-align: center;
+}
+
+.site .rank-table .r {
+  text-align: right;
+}
+
+.site .rank-table td.pos {
+  width: 44px;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.5rem;
+  line-height: 1;
+  color: var(--s-pos);
+}
+
+.site .rank-table td.pos-1 {
+  color: var(--s-red-text);
+}
+
+.site .rank-table td.pts {
+  font-family: var(--s-display);
+  font-weight: 900;
+  font-size: 1.5rem;
+  line-height: 1;
+}
+
+.site .rank-table td.time {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.site .evol {
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.site .evol-up {
+  color: var(--s-up);
+}
+
+.site .evol-down {
+  color: var(--s-down);
+}
+
+.site .evol-same {
+  color: var(--s-muted);
+}
+
+.site .evol-new {
+  color: var(--s-up);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+/* --- Calendrier --------------------------------------------------------------- */
+
+.site .calendar {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(165px, 1fr));
+  gap: 14px;
+  margin: 8px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site .calendar li > a,
+.site .calendar li > div {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  height: 100%;
+  padding: 16px 16px 18px;
+  background: var(--s-tile);
+  border-top: 4px solid #c9c4c1;
+  text-decoration: none;
+  color: var(--s-ink);
+}
+
+.site .calendar li.done > a {
+  border-top-color: var(--s-red);
+}
+
+.site .calendar li.done > a:hover {
+  background: #ece8e5;
+}
+
+.site .cal-round {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.site .cal-num {
+  display: none;
+}
+
+.site .cal-label {
+  color: var(--s-muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+.site .cal-name {
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.55rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.site .cal-status {
+  padding: 2px 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site .cal-status.done {
+  background: var(--s-black);
+  color: #fff;
+}
+
+.site .cal-status.todo {
+  border: 1px solid #b9b2af;
+  color: var(--s-muted);
+}
+
+.site .cal-meta {
+  display: flex;
+  flex-direction: column;
+  margin-top: auto;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.site .cal-meta small {
+  color: var(--s-muted);
+  font-size: 0.7rem;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+
+/* --- En-tête des pages intérieures ---------------------------------------- */
+
+.site .page-head {
+  position: relative;
+  overflow: hidden;
+  background: var(--s-black);
+  color: #fff;
+}
+
+.site .page-head::after {
+  right: -3%;
+  top: -12%;
+  font-size: clamp(9rem, 22vw, 19rem);
+}
+
+.site .page-head-inner {
+  position: relative;
+  z-index: 1;
+  max-width: var(--s-max);
+  margin: 0 auto;
+  padding: 28px 16px 40px;
+}
+
+.site .crumbs {
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.site .crumbs a {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.site .crumbs [aria-current] {
+  color: #fff;
+  font-weight: 600;
+}
+
+.site .page-head h1 {
+  margin: 18px 0 8px;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(2.8rem, 7vw, 4.6rem);
+  line-height: 0.95;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.site .page-head p {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* --- Pied de page ------------------------------------------------------------- */
+
+.site .footer {
+  background: var(--s-black);
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.92rem;
+}
+
+.site .footer-inner {
+  max-width: var(--s-max);
+  margin: 0 auto;
+  padding: 44px 16px 28px;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 32px;
+}
+
+.site .footer-brand {
+  margin: 0 0 10px;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.8rem;
+  text-transform: uppercase;
+  color: #fff;
+}
+
+.site .footer-about p:last-child {
+  margin: 0;
+  line-height: 1.6;
+}
+
+.site .footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.site .footer-title {
+  margin: 0 0 4px;
+  color: #fff;
+  font-family: var(--s-display);
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site .footer-col a {
+  color: rgba(255, 255, 255, 0.7);
+  text-decoration: none;
+}
+
+.site .footer-col a:hover {
+  color: #fff;
+}
+
+.site .footer-legal {
+  max-width: var(--s-max);
+  margin: 0 auto;
+  padding: 16px 16px 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.45);
+  font-size: 0.8rem;
+}
+
+/* --- Tablette ----------------------------------------------------------------- */
+
+@media (max-width: 1000px) {
+  .site .hero-inner {
+    grid-template-columns: 1fr;
+    padding: 48px 16px 40px;
+  }
+
+  .site .hero::before {
+    width: 100%;
+    top: auto;
+    height: 46%;
+    clip-path: polygon(0 18%, 100% 0, 100% 100%, 0 100%);
+  }
+
+  .site .podium-card {
+    max-width: 480px;
+  }
+
+  .site .cards-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Mobile : menu repliable, maquettes pages 4 à 9 ------------------------ */
+
+@media (max-width: 860px) {
+  .site .nav-inner {
+    height: 60px;
+    gap: 12px;
+    justify-content: space-between;
+  }
+
+  .site .nav-logo img {
+    height: 40px;
+  }
+
+  .site .nav-cta {
+    display: none;
+  }
+
+  .site .nav-burger {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 6px;
+    width: 44px;
+    height: 44px;
+    padding: 0 9px;
+    background: none;
+    border: none;
+    cursor: pointer;
+  }
+
+  .site .nav-burger span {
+    display: block;
+    height: 3px;
+    background: #fff;
+    border-radius: 2px;
+    transition: transform 0.2s, opacity 0.2s;
+  }
+
+  .site .nav-open .nav-burger span:nth-child(1) {
+    transform: translateY(9px) rotate(45deg);
+  }
+  .site .nav-open .nav-burger span:nth-child(2) {
+    opacity: 0;
+  }
+  .site .nav-open .nav-burger span:nth-child(3) {
+    transform: translateY(-9px) rotate(-45deg);
+  }
+
+  .site .nav-links {
+    display: none;
+    position: absolute;
+    top: 60px;
+    left: 0;
+    right: 0;
+    height: auto;
+    flex-direction: column;
+    gap: 0;
+    padding: 8px 16px 20px;
+    background: var(--s-red);
+    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.25);
+  }
+
+  .site .nav-open .nav-links {
+    display: flex;
+  }
+
+  .site .nav-links a {
+    padding: 14px 0;
+    font-size: 1.25rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  }
+
+  .site .nav-links a.active::after {
+    display: none;
+  }
+
+  .site .nav-links .nav-cta-mobile {
+    display: block;
+    margin-top: 16px;
+    padding: 14px;
+    border: none;
+    text-align: center;
+    color: var(--s-red);
+  }
+
+  .site .ticker-podium li:nth-child(n + 2),
+  .site .ticker-link {
+    display: none;
+  }
+
+  .site .ticker-label-full {
+    display: none;
+  }
+
+  .site .hero-title {
+    font-size: clamp(3rem, 15vw, 4.5rem);
+  }
+
+  .site .hero-actions {
+    flex-direction: column;
+  }
+
+  .site .hero-actions .btn {
+    width: 100%;
+  }
+
+  .site .stats-inner {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .site .stat:nth-child(3) {
+    border-left: none;
+  }
+
+  .site .stat:nth-child(n + 3) {
+    border-top: 1px solid var(--s-line);
+  }
+
+  .site .stat {
+    padding: 20px 16px;
+  }
+
+  .site .stat strong {
+    font-size: 2.4rem;
+  }
+
+  .site .band-inner {
+    padding: 40px 16px;
+  }
+
+  .site .card-block {
+    padding: 20px 16px;
+  }
+
+  /* Calendrier en liste, numéro dans un carré (maquette mobile) */
+  .site .calendar {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .site .calendar li > a,
+  .site .calendar li > div {
+    display: grid;
+    grid-template-columns: 56px 1fr auto;
+    grid-template-areas:
+      "num name status"
+      "num meta status";
+    align-items: center;
+    gap: 2px 16px;
+    padding: 14px 16px 14px 14px;
+    border-top: none;
+  }
+
+  .site .cal-round {
+    grid-area: num;
+  }
+
+  .site .cal-num {
+    display: grid;
+    place-items: center;
+    width: 56px;
+    height: 56px;
+    background: var(--s-red);
+    color: #fff;
+    font-family: var(--s-display);
+    font-style: italic;
+    font-weight: 900;
+    font-size: 1.8rem;
+  }
+
+  .site .calendar li.todo .cal-num {
+    background: #d3cdca;
+    color: var(--s-ink);
+  }
+
+  .site .cal-label {
+    display: none;
+  }
+
+  .site .cal-name {
+    grid-area: name;
+  }
+
+  .site .cal-status {
+    grid-area: status;
+  }
+
+  .site .cal-meta {
+    grid-area: meta;
+    flex-direction: row;
+    gap: 4px;
+    margin-top: 0;
+    color: var(--s-muted);
+    font-weight: 400;
+  }
+
+  .site .cal-meta small {
+    font-size: 0.95rem;
+    letter-spacing: 0;
+    text-transform: none;
+    font-weight: 400;
+  }
+
+  .site .cal-meta small::after {
+    content: " :";
+  }
+
+  .site .footer-inner {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+}

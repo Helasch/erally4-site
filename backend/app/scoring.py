@@ -67,6 +67,43 @@ def compute_custom_standings(
     return ordered
 
 
+# --- Évolution entre deux classements -----------------------------------------
+
+
+@dataclass
+class Movement:
+    # Places gagnées (+) ou perdues (-) ; None si pas de comparaison possible
+    evol: int | None
+    # Points marqués depuis le classement précédent ; None si pas de comparaison possible
+    gained: int | None
+    # Absent du classement précédent
+    is_new: bool
+
+
+def compare_standings(
+    current: list[tuple[int | None, int, int]],
+    previous: list[tuple[int | None, int, int]] | None,
+) -> list[Movement]:
+    """Compare deux classements donnés sous forme (clé pilote, position, points).
+
+    La clé est l'identifiant du pilote, ou None pour un « WRC Player » non identifié
+    (aucune comparaison possible). Sans classement précédent, rien n'est comparé.
+    """
+    if previous is None:
+        return [Movement(None, None, False) for _ in current]
+    before = {key: (position, points) for key, position, points in previous if key is not None}
+    movements = []
+    for key, position, points in current:
+        if key is None:
+            movements.append(Movement(None, None, False))
+        elif key not in before:
+            movements.append(Movement(None, points, True))
+        else:
+            old_position, old_points = before[key]
+            movements.append(Movement(old_position - position, points - old_points, False))
+    return movements
+
+
 # --- Suggestions pour les « WRC Player » --------------------------------------
 
 

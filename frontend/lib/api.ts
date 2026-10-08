@@ -102,3 +102,51 @@ export function formatDiff(value: string): string {
   if (/^00:00:00\.000$/.test(value)) return "—";
   return "+" + formatTime(value);
 }
+
+export type RallyRef = { id: number; name: string; round: number };
+
+export type PodiumEntry = {
+  position: number;
+  name: string;
+  driver_id: number | null;
+  vehicle: string;
+  platform: string;
+  time: string;
+  diff: string;
+};
+
+export type StandingEntry = {
+  id?: number;
+  position: number;
+  name: string;
+  driver_id: number | null;
+  identified: boolean;
+  points: number;
+  evol: number | null;
+  gained: number | null;
+  is_new: boolean;
+  per_rally?: (number | null)[];
+};
+
+export type Home = {
+  championship: { id: number; name: string; mode: "racenet" | "custom" };
+  total_rounds: number;
+  completed_rounds: number;
+  last_rally:
+    | (RallyRef & { event_date: string | null; podium: PodiumEntry[]; top5: PodiumEntry[]; result_count: number })
+    | null;
+  standings: {
+    after: RallyRef | null;
+    count: number;
+    top5: StandingEntry[];
+    leader: {
+      name: string;
+      driver_id: number | null;
+      points: number;
+      wins: number;
+      gap: number | null;
+      was_leader: boolean;
+    } | null;
+  };
+  calendar: RallySummary[];
+};
