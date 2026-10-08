@@ -37,7 +37,7 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
     // Podium de chaque manche terminée
     Promise.all(done.map((r) => apiGet<RallyDetail>(`/api/rallies/${r.id}`))),
   ]);
-  const podiums = new Map(details.map((d) => [d.id, d.results.slice(0, 3)]));
+  const podiums = new Map(details.map((d) => [d.id, d.results.filter((r) => r.position !== null).slice(0, 3)]));
 
   return (
     <>

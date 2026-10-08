@@ -7,6 +7,7 @@ import { adminApi, errorMessage, type Driver } from "@/lib/admin-api";
 import type { RallyDetail } from "@/lib/api";
 import { DriverDatalist } from "../../driver-input";
 import { EditableDriver } from "../../editable-driver";
+import { PenaltyEditor } from "./penalty-editor";
 
 export default function AdminRallyPage() {
   const { id } = useParams<{ id: string }>();
@@ -56,12 +57,13 @@ export default function AdminRallyPage() {
               <th>Voiture</th>
               <th className="num">Temps</th>
               <th>Plateforme</th>
+              <th>Pénalité (article 8)</th>
             </tr>
           </thead>
           <tbody>
             {rally.results.map((r) => (
               <tr key={r.id} className={r.identified ? "" : "anonymous"}>
-                <td className="pos">{r.position}</td>
+                <td className="pos">{r.position ?? "NC"}</td>
                 <td>
                   <EditableDriver
                     endpoint={`/rally-results/${r.id}`}
@@ -74,6 +76,9 @@ export default function AdminRallyPage() {
                 <td className="num">{r.time}</td>
                 <td>
                   <span className="badge">{r.platform}</span>
+                </td>
+                <td>
+                  <PenaltyEditor result={r} onSaved={reload} />
                 </td>
               </tr>
             ))}

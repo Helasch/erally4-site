@@ -233,3 +233,62 @@ def suggest_for_championship(
 
     ranked.sort(key=lambda item: item[0])
     return [s for _, s in ranked[:limit]]
+
+
+# --- Pénalités : reclassement d'un rallye et ajustements du général ------------
+
+
+@dataclass
+class TimedResult:
+    key: int  # identifiant du résultat
+    time_ms: int  # temps RaceNet
+    penalty_ms: int = 0  # pénalité de temps ajoutée par les organisateurs
+    disqualified: bool = False  # non classé (disqualification, abandon volontaire…)
+
+
+@dataclass
+class Classified:
+    key: int
+    position: int | None  # None = non classé
+    time_ms: int  # temps retenu (pénalités comprises)
+    diff_ms: int | None  # écart au premier
+    diff_prev_ms: int | None  # écart au précédent
+
+
+def classify(results: list[TimedResult]) -> list[Classified]:
+    """Classement d'un rallye après pénalités : classés au temps (ordre RaceNet en cas d'égalité), puis non classés."""
+    indexed = list(enumerate(results))
+    ranked = sorted(
+        (item for item in indexed if not item[1].disqualified),
+        key=lambda item: (item[1].time_ms + item[1].penalty_ms, item[0]),
+    )
+    out: list[Classified] = []
+    best = previous = None
+    for position, (_, r) in enumerate(ranked, start=1):
+        total = r.time_ms + r.penalty_ms
+        best = total if best is None else best
+        out.append(Classified(r.key, position, total, total - best, total - previous if previous is not None else 0))
+        previous = total
+    for _, r in indexed:
+        if r.disqualified:
+            out.append(Classified(r.key, None, r.time_ms + r.penalty_ms, None, None))
+    return out
+
+
+def apply_adjustments(
+    entries: list[tuple[int | None, int, int]], adjustments: dict[int, int]
+) -> list[tuple[int, int, int]]:
+    """Ajustements de points (pénalités) sur un classement donné en (clé pilote, position, points).
+
+    Renvoie (indice de la ligne d'origine, nouvelle position, nouveaux points) dans le nouvel ordre.
+    Sans ajustement, le classement est rendu tel quel ; sinon il est retrié par points,
+    l'ordre d'origine départageant les égalités.
+    """
+    if not any(adjustments.get(key, 0) for key, _, _ in entries if key is not None):
+        return [(i, position, points) for i, (_, position, points) in enumerate(entries)]
+    adjusted = [
+        (i, position, points + (adjustments.get(key, 0) if key is not None else 0))
+        for i, (key, position, points) in enumerate(entries)
+    ]
+    adjusted.sort(key=lambda e: (-e[2], e[1]))
+    return [(i, rank, points) for rank, (i, _, points) in enumerate(adjusted, start=1)]

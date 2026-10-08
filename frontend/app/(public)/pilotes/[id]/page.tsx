@@ -185,23 +185,42 @@ export default async function PilotePage({ params }: { params: Promise<{ id: str
                     <tbody>
                       {season.history.map((h) => (
                         <tr key={h.rally_id}>
-                          <td className={`pos pos-${h.position}`}>{h.round}</td>
+                          <td className={`pos pos-${h.position ?? "nc"}`}>{h.round}</td>
                           <td>
                             <Link href={`/classements?rallye=${h.rally_id}`} className="driver-link">
                               {shortRallyName(h.rally)}
                             </Link>
                           </td>
                           <td className="r">
-                            <b>{ordinal(h.position)}</b> <span className="muted-cell">/ {h.finishers}</span>
+                            {h.position !== null ? (
+                              <>
+                                <b>{ordinal(h.position)}</b> <span className="muted-cell">/ {h.finishers}</span>
+                              </>
+                            ) : (
+                              <b title={h.penalty_reason ?? undefined}>Non classé</b>
+                            )}
                           </td>
                           <td className="r time hide-sm">{formatTime(h.time)}</td>
-                          <td className="r time">{formatDiff(h.diff)}</td>
+                          <td className="r time" title={h.penalty_reason ?? undefined}>
+                            {h.diff ? formatDiff(h.diff) : "—"}
+                            {h.penalty_s > 0 && !h.disqualified && <span className="penalty-mark">dont +{h.penalty_s} s</span>}
+                          </td>
                           <td className="hide-sm muted-cell">{h.vehicle}</td>
                           {custom && <td className="r pts">{h.points}</td>}
                         </tr>
                       ))}
                     </tbody>
                   </table>
+                </div>
+              )}
+              {season.adjustment_reasons.length > 0 && (
+                <div className="adj-notes">
+                  <p>Ajustements de points au classement général (article 8 du règlement) :</p>
+                  <ul>
+                    {season.adjustment_reasons.map((reason) => (
+                      <li key={reason}>{reason}</li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </div>

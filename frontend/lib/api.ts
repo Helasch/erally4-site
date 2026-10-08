@@ -59,6 +59,8 @@ export type StandingRow = {
   evol?: number | null;
   gained?: number | null;
   is_new?: boolean;
+  adjustment?: number;
+  adjustment_reasons?: string[];
 };
 
 export type Standings = {
@@ -76,16 +78,20 @@ export type Standings = {
 
 export type RallyResultRow = {
   id: number;
-  position: number;
+  /** null = non classé (pénalité) */
+  position: number | null;
   name: string;
   driver_id: number | null;
   identified: boolean;
   vehicle: string;
   platform: string;
   time: string;
-  diff: string;
-  diff_prev: string;
+  diff: string | null;
+  diff_prev: string | null;
   points: number | null;
+  penalty_s: number;
+  disqualified: boolean;
+  penalty_reason: string | null;
 };
 
 export type RallyDetail = {
@@ -201,6 +207,7 @@ export type DriverProfile = {
     championship: { id: number; name: string; mode: "racenet" | "custom" };
     position: number | null;
     points: number | null;
+    adjustment_reasons: string[];
     classified: number;
     stats: DriverStats;
     progression: { round: number; rally: string; position: number; points: number; classified: number }[];
@@ -210,13 +217,17 @@ export type DriverProfile = {
       rally: string;
       starts_at: string | null;
       ends_at: string | null;
-      position: number;
+      /** null = non classé (pénalité) */
+      position: number | null;
       finishers: number;
       time: string;
-      diff: string;
+      diff: string | null;
       vehicle: string;
       platform: string;
       points: number | null;
+      penalty_s: number;
+      disqualified: boolean;
+      penalty_reason: string | null;
     }[];
   } | null;
 };

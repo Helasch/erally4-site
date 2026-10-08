@@ -14,6 +14,7 @@ from app.services import (
     home_payload,
     rally_dates,
     rally_statuses,
+    rally_winner,
     not_found,
     rally_results_payload,
     read_settings,
@@ -29,7 +30,7 @@ def _current(db: Session) -> Championship | None:
 
 
 def _rally_summary(rally: Rally, index: int, status: str) -> dict:
-    winner = rally.results[0] if rally.results else None
+    winner = rally_winner(rally)
     return {
         "id": rally.id,
         "round": index + 1,

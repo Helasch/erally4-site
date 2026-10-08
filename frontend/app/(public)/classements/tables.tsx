@@ -125,13 +125,21 @@ export function StandingsTable({
                   </td>
                   <td className={`c evol evol-${m.kind}`}>{m.text}</td>
                   {gainedLabel && <td className="r gained">{s.gained ? `+${s.gained}` : "–"}</td>}
-                  <td className="r pts">{s.points}</td>
+                  <td className="r pts">
+                    {s.points}
+                    {s.adjustment ? (
+                      <sup className="adj-mark" title={(s.adjustment_reasons ?? []).join(" · ")}>
+                        *
+                      </sup>
+                    ) : null}
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      <AdjustmentNotes rows={rows} />
     </TableCard>
   );
 }
@@ -169,7 +177,7 @@ export function RallyTable({ rows, title, showPoints }: { rows: RallyResultRow[]
           <tbody>
             {f.shown.map((r) => (
               <tr key={r.id} className={r.identified ? "" : "unidentified"}>
-                <td className={`pos pos-${r.position}`}>{r.position}</td>
+                <td className={`pos pos-${r.position ?? "nc"}`}>{r.position ?? "NC"}</td>
                 <td>
                   <span className="driver-cell">
                     <DriverName name={r.name} id={r.driver_id} />
@@ -178,10 +186,24 @@ export function RallyTable({ rows, title, showPoints }: { rows: RallyResultRow[]
                   <small className="show-sm">{r.vehicle}</small>
                 </td>
                 <td className="hide-sm muted-cell">{r.vehicle}</td>
-                <td className="r time hide-sm">{formatTime(r.time)}</td>
-                <td className="r time muted-cell hide-md">{formatDiff(r.diff_prev)}</td>
-                <td className="r time hide-sm">{formatDiff(r.diff)}</td>
-                <td className="r time only-sm">{r.position === 1 ? formatTime(r.time) : formatDiff(r.diff)}</td>
+                {r.disqualified ? (
+                  <td className="r nc-cell" colSpan={3} title={r.penalty_reason ?? undefined}>
+                    Non classé{r.penalty_reason ? ` · ${r.penalty_reason}` : ""}
+                  </td>
+                ) : (
+                  <>
+                    <td className="r time hide-sm">
+                      {formatTime(r.time)}
+                      <PenaltyMark result={r} />
+                    </td>
+                    <td className="r time muted-cell hide-md">{r.diff_prev ? formatDiff(r.diff_prev) : "—"}</td>
+                    <td className="r time hide-sm">{r.diff ? formatDiff(r.diff) : "—"}</td>
+                  </>
+                )}
+                <td className="r time only-sm">
+                  {r.disqualified ? "NC" : r.position === 1 ? formatTime(r.time) : r.diff ? formatDiff(r.diff) : "—"}
+                  <PenaltyMark result={r} />
+                </td>
                 {showPoints && <td className="r pts">{r.points}</td>}
               </tr>
             ))}
@@ -189,5 +211,33 @@ export function RallyTable({ rows, title, showPoints }: { rows: RallyResultRow[]
         </table>
       </div>
     </TableCard>
+  );
+}
+
+/** Pénalité de temps affichée à côté du temps (motif au survol). */
+function PenaltyMark({ result: r }: { result: RallyResultRow }) {
+  if (!r.penalty_s || r.disqualified) return null;
+  return (
+    <span className="penalty-mark" title={r.penalty_reason ?? "Pénalité"}>
+      dont +{r.penalty_s} s
+    </span>
+  );
+}
+
+/** Ajustements de points décidés par les organisateurs (article 8), affichés en toute transparence. */
+function AdjustmentNotes({ rows }: { rows: StandingRow[] }) {
+  const adjusted = rows.filter((r) => r.adjustment);
+  if (adjusted.length === 0) return null;
+  return (
+    <div className="adj-notes">
+      <p>* Points ajustés par les organisateurs (article 8 du règlement) :</p>
+      <ul>
+        {adjusted.map((r) => (
+          <li key={`${r.driver_id}-${r.position}`}>
+            <strong>{r.name}</strong> — {(r.adjustment_reasons ?? []).join(" ; ")}
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }

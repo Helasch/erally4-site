@@ -21,6 +21,7 @@ from app.models import (
     Rally,
     RallyResult,
     ScoringPoint,
+    StandingAdjustment,
 )
 from app.security import authenticate, check_ip_rate_limit, client_ip, close_session, current_session, open_session
 from app.services import (
@@ -510,4 +511,89 @@ def remove_account_avatar(account_id: int, db: Session = Depends(get_db)):
 @router.delete("/accounts/{account_id}", dependencies=protected)
 def remove_account(account_id: int, db: Session = Depends(get_db)):
     delete_account(db, _account(db, account_id))
+    return {"ok": True}
+
+
+# --- Pénalités (article 8 du règlement) --------------------------------------------------
+
+
+class PenaltyBody(BaseModel):
+    penalty_s: float = Field(default=0, ge=0, le=3600)
+    disqualified: bool = False
+    reason: str | None = Field(default=None, max_length=255)
+
+
+@router.patch("/rally-results/{result_id}/penalty", dependencies=protected)
+def set_penalty(result_id: int, body: PenaltyBody, db: Session = Depends(get_db)):
+    """Pénalité de temps ou « non classé » sur un résultat ; tout à zéro = retirer la pénalité."""
+    row = db.get(RallyResult, result_id)
+    if row is None:
+        raise not_found("Résultat")
+    reason = (body.reason or "").strip() or None
+    if (body.penalty_s or body.disqualified) and not reason:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Indiquez le motif de la pénalité.")
+    row.penalty_ms = round(body.penalty_s * 1000)
+    row.disqualified = body.disqualified
+    row.penalty_reason = reason if (body.penalty_s or body.disqualified) else None
+    db.commit()
+    return {"ok": True}
+
+
+class AdjustmentBody(BaseModel):
+    driver_name: str = Field(min_length=1, max_length=64)
+    points: int = Field(ge=-1000, le=1000)
+    rally_id: int | None = None
+    reason: str = Field(min_length=1, max_length=255)
+
+
+def _adjustment_payload(a: StandingAdjustment) -> dict:
+    return {
+        "id": a.id,
+        "driver_id": a.driver_id,
+        "driver_name": a.driver.name,
+        "points": a.points,
+        "rally_id": a.rally_id,
+        "rally_name": a.rally.name if a.rally else None,
+        "reason": a.reason,
+        "created_at": a.created_at,
+    }
+
+
+@router.get("/championships/{championship_id}/adjustments", dependencies=protected)
+def list_adjustments(championship_id: int, db: Session = Depends(get_db)):
+    get_championship(db, championship_id)
+    rows = db.scalars(
+        select(StandingAdjustment)
+        .where(StandingAdjustment.championship_id == championship_id)
+        .order_by(StandingAdjustment.created_at.desc())
+    )
+    return [_adjustment_payload(a) for a in rows]
+
+
+@router.post("/championships/{championship_id}/adjustments", dependencies=protected, status_code=201)
+def add_adjustment(championship_id: int, body: AdjustmentBody, db: Session = Depends(get_db)):
+    c = get_championship(db, championship_id)
+    if body.points == 0:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "L'ajustement ne peut pas être de 0 point.")
+    driver = db.scalar(select(Driver).where(Driver.name == body.driver_name.strip()))
+    if driver is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, f"Aucun pilote « {body.driver_name} ».")
+    if body.rally_id is not None and get_rally(db, body.rally_id).championship_id != c.id:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Ce rallye n'appartient pas au championnat.")
+    a = StandingAdjustment(
+        championship_id=c.id, driver_id=driver.id, rally_id=body.rally_id, points=body.points, reason=body.reason.strip()
+    )
+    db.add(a)
+    db.commit()
+    db.refresh(a)
+    return _adjustment_payload(a)
+
+
+@router.delete("/adjustments/{adjustment_id}", dependencies=protected)
+def delete_adjustment(adjustment_id: int, db: Session = Depends(get_db)):
+    a = db.get(StandingAdjustment, adjustment_id)
+    if a is None:
+        raise not_found("Ajustement")
+    db.delete(a)
+    db.commit()
     return {"ok": True}

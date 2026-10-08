@@ -164,7 +164,7 @@ async function ChampionshipView({
 
 async function RallyView({ rallyId }: { rallyId: number }) {
   const rally = await apiGet<RallyDetail>(`/api/rallies/${rallyId}`);
-  const podium = rally.results.slice(0, 3);
+  const podium = rally.results.filter((r) => r.position !== null).slice(0, 3);
 
   return (
     <>
@@ -186,7 +186,7 @@ async function RallyView({ rallyId }: { rallyId: number }) {
                   <span className="leader-name">
                     {r.driver_id !== null ? <Link href={`/pilotes/${r.driver_id}`}>{r.name}</Link> : r.name}
                   </span>
-                  <strong>{i === 0 ? formatTime(r.time) : formatDiff(r.diff)}</strong>
+                  <strong>{i === 0 || !r.diff ? formatTime(r.time) : formatDiff(r.diff)}</strong>
                   <small>{r.vehicle}</small>
                 </span>
               </li>

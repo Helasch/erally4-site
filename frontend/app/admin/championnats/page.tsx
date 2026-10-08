@@ -138,9 +138,7 @@ function ChampionshipCard({
           <option value="racenet">Barème RaceNet (import du CSV championnat)</option>
           <option value="custom">Barème personnalisé (calculé depuis les rallyes)</option>
         </select>
-        {c.mode === "racenet" && (
-          <Link href={`/admin/classement/${c.id}`}>Voir / corriger le classement importé</Link>
-        )}
+        <Link href={`/admin/classement/${c.id}`}>Classement général et pénalités</Link>
       </div>
 
       {c.mode === "custom" && (

@@ -2177,3 +2177,389 @@
     animation: none;
   }
 }
+
+/* --- Pénalités (article 8) ------------------------------------------------------ */
+
+.site .penalty-mark {
+  display: block;
+  color: var(--s-down);
+  font-size: 0.72rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.site .rank-table td.nc-cell {
+  color: var(--s-muted);
+  font-style: italic;
+  font-size: 0.9rem;
+  white-space: normal;
+}
+
+.site .rank-table td.pos-nc {
+  font-size: 1rem;
+  color: var(--s-muted);
+}
+
+.site .adj-mark {
+  margin-left: 2px;
+  color: var(--s-down);
+  font-size: 0.9rem;
+  cursor: help;
+}
+
+.site .adj-notes {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: var(--s-tile);
+  border-left: 3px solid var(--s-down);
+  font-size: 0.88rem;
+  color: var(--s-ink);
+}
+
+.site .adj-notes p {
+  margin: 0 0 6px;
+  font-weight: 700;
+}
+
+.site .adj-notes ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+/* --- Page Règlement --------------------------------------------------------------- */
+
+.site .rules-layout {
+  display: grid;
+  grid-template-columns: 250px minmax(0, 1fr);
+  gap: 32px;
+  align-items: start;
+}
+
+.site .rules-toc {
+  position: sticky;
+  top: 84px;
+  padding: 18px 16px;
+  background: var(--s-card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.site .rules-toc-title {
+  margin: 0 0 10px;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.3rem;
+  text-transform: uppercase;
+}
+
+.site .rules-toc ol {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site .rules-toc a {
+  display: flex;
+  gap: 10px;
+  padding: 6px 4px;
+  font-size: 0.9rem;
+  text-decoration: none;
+  color: var(--s-ink);
+}
+
+.site .rules-toc a:hover {
+  color: var(--s-red-text);
+}
+
+.site .rules-toc a span {
+  flex: none;
+  width: 22px;
+  font-family: var(--s-display);
+  font-weight: 800;
+  color: var(--s-red-text);
+}
+
+.site .rules {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.site .rule {
+  padding: 24px 28px;
+  background: var(--s-card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+  line-height: 1.65;
+  scroll-margin-top: 90px;
+}
+
+.site .rule h2 {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 4px 14px;
+  margin: 0 0 14px;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.7rem;
+  line-height: 1.1;
+  text-transform: uppercase;
+  color: var(--s-ink);
+}
+
+.site .rule-num {
+  padding: 2px 10px;
+  background: var(--s-red);
+  color: #fff;
+  font-size: 1rem;
+  font-style: normal;
+  letter-spacing: 0.04em;
+}
+
+.site .rule p {
+  margin: 0 0 12px;
+}
+
+.site .rule a {
+  color: var(--s-red-text);
+}
+
+.site .channel {
+  padding: 1px 6px;
+  background: var(--s-tile);
+  border: 1px solid var(--s-line);
+  font-size: 0.9em;
+  white-space: nowrap;
+}
+
+.site .callout {
+  margin: 14px 0 4px;
+  padding: 12px 16px;
+  background: #fbf1ef;
+  border-left: 4px solid var(--s-red);
+}
+
+.site .checklist,
+.site .vehicle-list {
+  margin: 0 0 12px;
+  padding: 0;
+  list-style: none;
+}
+
+.site .checklist li {
+  position: relative;
+  padding: 3px 0 3px 26px;
+}
+
+.site .checklist li::before {
+  content: "✓";
+  position: absolute;
+  left: 4px;
+  color: var(--s-red-text);
+  font-weight: 800;
+}
+
+.site .vehicle-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.site .vehicle-list li {
+  padding: 12px 14px;
+  background: var(--s-tile);
+  border-left: 4px solid var(--s-red);
+  font-family: var(--s-display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.site .rules-table {
+  width: 100%;
+  margin: 4px 0 14px;
+  border-collapse: collapse;
+  font-size: 0.95rem;
+}
+
+.site .rules-table th,
+.site .rules-table td {
+  padding: 10px 12px;
+  white-space: normal;
+  border: none;
+  border-bottom: 1px solid var(--s-line);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.site .rules-table thead th {
+  background: var(--s-black);
+  color: #fff;
+  font-family: var(--s-display);
+  font-weight: 800;
+  font-size: 0.9rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.site .rules-table .c {
+  text-align: center;
+}
+
+.site .round-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  background: var(--s-red);
+  color: #fff;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.2rem;
+}
+
+.site .rules-status {
+  display: inline-block;
+  margin-left: 8px;
+  vertical-align: 1px;
+}
+
+.site .points-table th,
+.site .points-table td {
+  text-align: center;
+  white-space: nowrap;
+}
+
+.site .points-table tbody th {
+  background: var(--s-tile);
+  font-family: var(--s-display);
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.site .points-table tbody td {
+  font-family: var(--s-display);
+  font-weight: 900;
+  font-size: 1.4rem;
+}
+
+.site .points-table .podium-1 {
+  background: var(--s-red);
+  color: #fff;
+}
+
+.site .points-table .podium-2,
+.site .points-table .podium-3 {
+  background: #f4e1df;
+}
+
+.site .sanctions-table td:first-child {
+  width: 45%;
+  font-weight: 600;
+}
+
+.site .settings {
+  margin: 0 0 12px;
+}
+
+.site .settings div {
+  display: grid;
+  grid-template-columns: 220px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--s-line);
+}
+
+.site .settings dt {
+  font-weight: 700;
+}
+
+.site .settings dd {
+  margin: 0;
+}
+
+.site .rules-version {
+  margin: 8px 0 0;
+  color: var(--s-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+@media (max-width: 860px) {
+  .site .rules-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  /* Sommaire en pastilles défilantes */
+  .site .rules-toc {
+    min-width: 0;
+    position: sticky;
+    top: 60px;
+    z-index: 5;
+    margin: 0 -16px;
+    padding: 10px 16px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+
+  .site .rules-toc-title {
+    display: none;
+  }
+
+  .site .rules-toc ol {
+    display: flex;
+    gap: 6px;
+  }
+
+  .site .rules-toc a {
+    padding: 6px 12px;
+    background: var(--s-tile);
+    white-space: nowrap;
+  }
+
+  .site .rule {
+    padding: 18px 16px;
+  }
+
+  .site .rule h2 {
+    font-size: 1.4rem;
+  }
+
+  .site .settings div {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+
+  .site .rules-table th,
+  .site .rules-table td {
+    padding: 8px;
+  }
+}
+
+/* Ordinaux français : « 1er, 2e » et non « 1ER, 2E » */
+.site .points-table thead th {
+  text-transform: none;
+  font-size: 1rem;
+}
+
+@media (max-width: 860px) {
+  .site .points-table th,
+  .site .points-table td {
+    padding: 6px 2px;
+  }
+
+  .site .points-table thead th {
+    font-size: 0.75rem;
+  }
+
+  .site .points-table tbody td {
+    font-size: 1.05rem;
+  }
+
+  .site .points-table tbody th {
+    font-size: 0.7rem;
+  }
+}
