@@ -15,18 +15,35 @@ export async function apiGet<T>(path: string): Promise<T> {
 
 export type RallySummary = {
   id: number;
+  round: number;
   name: string;
   order_index: number;
   event_date: string | null;
   has_results: boolean;
+  result_count: number;
+  winner: { name: string; platform: string } | null;
 };
 
 export type Championship = {
   id: number;
   name: string;
+  is_current: boolean;
   mode: "racenet" | "custom";
   rallies: RallySummary[];
 };
+
+export type ChampionshipListItem = { id: number; name: string; is_current: boolean };
+
+/** Championnat demandé par ?saison=, sinon celui en cours (null s'il n'y en a aucun). */
+export async function loadChampionship(saison: string | undefined): Promise<Championship | null> {
+  const path = saison && /^\d+$/.test(saison) ? `/api/championships/${saison}` : "/api/championship/current";
+  try {
+    return await apiGet<Championship>(path);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) return null;
+    throw e;
+  }
+}
 
 export type StandingRow = {
   id?: number;
@@ -56,14 +73,17 @@ export type RallyResultRow = {
   platform: string;
   time: string;
   diff: string;
+  diff_prev: string;
   points: number | null;
 };
 
 export type RallyDetail = {
   id: number;
+  round: number;
   name: string;
   event_date: string | null;
   championship: { id: number; name: string; mode: "racenet" | "custom" };
+  rallies: RallySummary[];
   results: RallyResultRow[];
 };
 

@@ -29,9 +29,6 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="fr" className={`${display.variable} ${body.variable}`}>
       <body>
         <header className="site-header">
-          <nav className="site-nav">
-            <Link href="/">Classement</Link>
-          </nav>
           <Link href="/" className="logo" aria-label="eRally4 Cup — accueil">
             <span className="logo-erally">
               eRally<span className="logo-4">4</span>

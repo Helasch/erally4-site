@@ -76,21 +76,27 @@ def display_name(driver: Driver | None, raw_name: str) -> str:
 
 
 def rally_results_payload(rally: Rally, scoring: dict[int, int] | None) -> list[dict]:
-    return [
-        {
-            "id": r.id,
-            "position": r.position,
-            "name": display_name(r.driver, r.raw_name),
-            "driver_id": r.driver_id,
-            "identified": r.driver_id is not None,
-            "vehicle": r.vehicle,
-            "platform": r.platform,
-            "time": format_time_ms(r.time_ms),
-            "diff": format_time_ms(r.diff_ms),
-            "points": scoring.get(r.position, 0) if scoring is not None else None,
-        }
-        for r in rally.results
-    ]
+    payload = []
+    previous = None
+    for r in rally.results:
+        payload.append(
+            {
+                "id": r.id,
+                "position": r.position,
+                "name": display_name(r.driver, r.raw_name),
+                "driver_id": r.driver_id,
+                "identified": r.driver_id is not None,
+                "vehicle": r.vehicle,
+                "platform": r.platform,
+                "time": format_time_ms(r.time_ms),
+                "diff": format_time_ms(r.diff_ms),
+                # Écart avec le pilote classé juste devant
+                "diff_prev": format_time_ms(max(r.time_ms - previous.time_ms, 0)) if previous else format_time_ms(0),
+                "points": scoring.get(r.position, 0) if scoring is not None else None,
+            }
+        )
+        previous = r
+    return payload
 
 
 def championship_standings(db: Session, championship: Championship) -> dict:
