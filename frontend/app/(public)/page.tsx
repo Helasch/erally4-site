@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { ApiError, apiGet, formatDate, formatDiff, formatTime, type Home } from "@/lib/api";
-import { movementLabel, plural, shortRallyName } from "@/lib/format";
+import { ApiError, apiGet, formatDiff, formatTime, type Home } from "@/lib/api";
+import { formatRallyDates, movementLabel, plural, shortRallyName, statusLabel } from "@/lib/format";
 
 export const dynamic = "force-dynamic";
 
@@ -240,6 +240,8 @@ export default async function HomePage() {
           <ol className="calendar">
             {calendar.map((r) => {
               const done = r.has_results;
+              const status = statusLabel(r.status);
+              const dates = formatRallyDates(r.starts_at, r.ends_at);
               const body = (
                 <>
                   <span className="cal-round">
@@ -247,7 +249,7 @@ export default async function HomePage() {
                     <span className="cal-label">Manche {r.round}</span>
                   </span>
                   <span className="cal-name">{shortRallyName(r.name)}</span>
-                  <span className={`cal-status ${done ? "done" : "todo"}`}>{done ? "Terminé" : "À venir"}</span>
+                  <span className={`cal-status ${status.kind}`}>{status.text}</span>
                   <span className="cal-meta">
                     {done && r.winner ? (
                       <>
@@ -257,14 +259,14 @@ export default async function HomePage() {
                     ) : (
                       <>
                         <small>Date</small>
-                        {r.event_date ? formatDate(r.event_date) : "À annoncer"}
+                        {dates ?? "À annoncer"}
                       </>
                     )}
                   </span>
                 </>
               );
               return (
-                <li key={r.id} className={done ? "done" : "todo"}>
+                <li key={r.id} className={`${done ? "done" : "todo"} status-${r.status}`}>
                   {done ? <Link href={`/classements?rallye=${r.id}`}>{body}</Link> : <div>{body}</div>}
                 </li>
               );

@@ -1,14 +1,13 @@
 import Link from "next/link";
 import {
   apiGet,
-  formatDate,
   formatDiff,
   formatTime,
   loadChampionship,
   type ChampionshipListItem,
   type RallyDetail,
 } from "@/lib/api";
-import { plural, shortRallyName } from "@/lib/format";
+import { formatRallyDatesLong, plural, shortRallyName, statusLabel } from "@/lib/format";
 import NavSelect from "../nav-select";
 import PageHeader from "../page-header";
 
@@ -33,7 +32,6 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
 
   const rallies = championship.rallies;
   const done = rallies.filter((r) => r.has_results);
-  const next = rallies.find((r) => !r.has_results);
   const [seasons, details] = await Promise.all([
     apiGet<ChampionshipListItem[]>("/api/championships"),
     // Podium de chaque manche terminée
@@ -65,20 +63,22 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
           ) : (
             <ol className="rounds">
               {rallies.map((r) => {
-                const isNext = next?.id === r.id;
+                const status = statusLabel(r.status);
+                const dates = formatRallyDatesLong(r.starts_at, r.ends_at);
                 const podium = podiums.get(r.id) ?? [];
                 return (
-                  <li key={r.id} className={`round ${r.has_results ? "done" : "todo"} ${isNext ? "next" : ""}`}>
+                  <li key={r.id} className={`round ${r.has_results ? "done" : "todo"} status-${r.status}`}>
                     <span className="round-num">{r.round}</span>
                     <div className="round-main">
                       <p className="round-kicker">
                         Manche {r.round}
-                        {isNext && <span className="round-flag">Prochaine manche</span>}
+                        {r.status === "next" && <span className="round-flag">Prochaine manche</span>}
+                        {r.status === "live" && <span className="round-flag round-flag-live">En cours</span>}
                       </p>
                       <h2 className="round-name">{shortRallyName(r.name)}</h2>
                       <p className="round-date">
                         {r.name !== shortRallyName(r.name) && <span>{r.name} · </span>}
-                        {r.event_date ? formatDate(r.event_date) : "Date à annoncer"}
+                        {dates ? dates.charAt(0).toUpperCase() + dates.slice(1) : "Date à annoncer"}
                       </p>
                     </div>
                     {r.has_results ? (
@@ -108,7 +108,7 @@ export default async function CalendrierPage({ searchParams }: { searchParams: P
                       </div>
                     ) : (
                       <div className="round-results">
-                        <span className="cal-status todo">À venir</span>
+                        <span className={`cal-status ${status.kind}`}>{status.text}</span>
                       </div>
                     )}
                   </li>

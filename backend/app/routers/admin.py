@@ -1,5 +1,5 @@
 import json
-from datetime import date
+from datetime import datetime
 from typing import Literal
 
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, Response, UploadFile, status
@@ -36,6 +36,7 @@ from app.services import (
     get_rally,
     not_found,
     rally_results_payload,
+    rally_statuses,
     read_settings,
     scoring_table,
     validate_driver_name,
@@ -78,6 +79,7 @@ def me(session: AdminSession = Depends(current_session)):
 
 
 def _championship_payload(c: Championship) -> dict:
+    statuses = rally_statuses(c)
     return {
         "id": c.id,
         "name": c.name,
@@ -89,7 +91,9 @@ def _championship_payload(c: Championship) -> dict:
                 "id": r.id,
                 "name": r.name,
                 "order_index": r.order_index,
-                "event_date": r.event_date,
+                "starts_at": r.starts_at,
+                "ends_at": r.ends_at,
+                "status": statuses[r.id],
                 "result_count": len(r.results),
                 "unidentified": sum(1 for x in r.results if x.driver_id is None),
             }
@@ -181,20 +185,37 @@ def admin_standings(championship_id: int, db: Session = Depends(get_db)):
 
 class RallyCreate(BaseModel):
     name: str = Field(min_length=1, max_length=120)
-    event_date: date | None = None
+    # Heure de Paris, sans fuseau (saisie « date et heure » de l'admin)
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
 
 
 class RallyUpdate(BaseModel):
     name: str | None = Field(default=None, min_length=1, max_length=120)
-    event_date: date | None = None
+    starts_at: datetime | None = None
+    ends_at: datetime | None = None
     order_index: int | None = Field(default=None, ge=1, le=100)
+
+
+def _check_dates(starts_at: datetime | None, ends_at: datetime | None) -> None:
+    if starts_at and ends_at and ends_at < starts_at:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "La fin du rallye doit être après son début.")
 
 
 @router.post("/championships/{championship_id}/rallies", dependencies=protected, status_code=201)
 def create_rally(championship_id: int, body: RallyCreate, db: Session = Depends(get_db)):
     c = get_championship(db, championship_id)
     order = max((r.order_index for r in c.rallies), default=0) + 1
-    db.add(Rally(championship_id=c.id, name=body.name.strip(), event_date=body.event_date, order_index=order))
+    _check_dates(body.starts_at, body.ends_at)
+    db.add(
+        Rally(
+            championship_id=c.id,
+            name=body.name.strip(),
+            starts_at=body.starts_at,
+            ends_at=body.ends_at,
+            order_index=order,
+        )
+    )
     db.commit()
     db.refresh(c)
     return _championship_payload(c)
@@ -206,8 +227,11 @@ def update_rally(rally_id: int, body: RallyUpdate, db: Session = Depends(get_db)
     data = body.model_dump(exclude_unset=True)
     if "name" in data and data["name"] is not None:
         r.name = data["name"].strip()
-    if "event_date" in data:
-        r.event_date = data["event_date"]
+    if "starts_at" in data:
+        r.starts_at = data["starts_at"]
+    if "ends_at" in data:
+        r.ends_at = data["ends_at"]
+    _check_dates(r.starts_at, r.ends_at)
     if data.get("order_index") is not None:
         r.order_index = data["order_index"]
     db.commit()

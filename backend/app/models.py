@@ -1,9 +1,8 @@
-from datetime import date, datetime
+from datetime import datetime
 
 from sqlalchemy import (
     BigInteger,
     Boolean,
-    Date,
     DateTime,
     Enum,
     ForeignKey,
@@ -81,7 +80,9 @@ class Rally(Base):
     championship_id: Mapped[int] = mapped_column(ForeignKey("championships.id", ondelete="CASCADE"))
     name: Mapped[str] = mapped_column(String(120))
     order_index: Mapped[int] = mapped_column(Integer)
-    event_date: Mapped[date | None] = mapped_column(Date)
+    # Début et fin du rallye, en heure de Paris (sans fuseau)
+    starts_at: Mapped[datetime | None] = mapped_column(DateTime)
+    ends_at: Mapped[datetime | None] = mapped_column(DateTime)
 
     championship: Mapped[Championship] = relationship(back_populates="rallies")
     results: Mapped[list["RallyResult"]] = relationship(
