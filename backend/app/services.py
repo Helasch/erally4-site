@@ -25,13 +25,18 @@ from app.models import (
     Rally,
     RallyResult,
     SiteSetting,
+    StandingAdjustment,
 )
 from app.rally_status import compute_statuses, now_paris
 from app.scoring import (
     ChampionshipCandidate,
+    Classified,
     Finish,
     PastRallyResult,
     RallyFinish,
+    TimedResult,
+    apply_adjustments,
+    classify,
     compare_standings,
     compute_custom_standings,
     driver_stats,
@@ -98,27 +103,51 @@ def display_name(driver: Driver | None, raw_name: str) -> str:
 # --- Classements ----------------------------------------------------------------
 
 
+def classified_results(rally: Rally) -> list[tuple[RallyResult, Classified]]:
+    """Résultats du rallye reclassés après pénalités (classés au temps, puis non classés)."""
+    results = list(rally.results)
+    by_id = {r.id: r for r in results}
+    ranking = classify(
+        [TimedResult(r.id, r.time_ms, r.penalty_ms or 0, bool(r.disqualified)) for r in results]
+    )
+    return [(by_id[c.key], c) for c in ranking]
+
+
+def rally_winner(rally: Rally) -> RallyResult | None:
+    for result, c in classified_results(rally):
+        if c.position == 1:
+            return result
+    return None
+
+
+def _penalty_info(r: RallyResult) -> dict:
+    return {
+        "penalty_s": round((r.penalty_ms or 0) / 1000, 3),
+        "disqualified": bool(r.disqualified),
+        "penalty_reason": r.penalty_reason,
+    }
+
+
 def rally_results_payload(rally: Rally, scoring: dict[int, int] | None) -> list[dict]:
     payload = []
-    previous = None
-    for r in rally.results:
+    for r, c in classified_results(rally):
         payload.append(
             {
                 "id": r.id,
-                "position": r.position,
+                "position": c.position,
                 "name": display_name(r.driver, r.raw_name),
                 "driver_id": r.driver_id,
                 "identified": r.driver_id is not None,
                 "vehicle": r.vehicle,
                 "platform": r.platform,
-                "time": format_time_ms(r.time_ms),
-                "diff": format_time_ms(r.diff_ms),
+                "time": format_time_ms(c.time_ms),
+                "diff": format_time_ms(c.diff_ms) if c.diff_ms is not None else None,
                 # Écart avec le pilote classé juste devant
-                "diff_prev": format_time_ms(max(r.time_ms - previous.time_ms, 0)) if previous else format_time_ms(0),
-                "points": scoring.get(r.position, 0) if scoring is not None else None,
+                "diff_prev": format_time_ms(c.diff_prev_ms) if c.diff_prev_ms is not None else None,
+                "points": (scoring.get(c.position, 0) if c.position else 0) if scoring is not None else None,
+                **_penalty_info(r),
             }
         )
-        previous = r
     return payload
 
 
@@ -137,7 +166,7 @@ def _rally_ref(rally: Rally | None, rallies: list[Rally]) -> dict | None:
     return {"id": rally.id, "name": rally.name, "round": rallies.index(rally) + 1}
 
 
-def standings_snapshots(db: Session, championship: Championship) -> list[Snapshot]:
+def _raw_snapshots(db: Session, championship: Championship) -> list[Snapshot]:
     """Un classement général par rallye disputé, dans l'ordre du calendrier."""
     rallies = list(championship.rallies)
 
@@ -145,9 +174,9 @@ def standings_snapshots(db: Session, championship: Championship) -> list[Snapsho
         scoring = scoring_table(championship)
         finishes = [
             [
-                RallyFinish(r.driver_id, display_name(r.driver, r.raw_name), r.position)
-                for r in rally.results
-                if r.driver_id is not None
+                RallyFinish(r.driver_id, display_name(r.driver, r.raw_name), c.position)
+                for r, c in classified_results(rally)
+                if r.driver_id is not None and c.position is not None
             ]
             for rally in rallies
         ]
@@ -208,6 +237,43 @@ def standings_snapshots(db: Session, championship: Championship) -> list[Snapsho
     return snapshots
 
 
+def standings_snapshots(db: Session, championship: Championship) -> list[Snapshot]:
+    """Classements généraux par rallye, ajustements de points des organisateurs compris."""
+    snapshots = _raw_snapshots(db, championship)
+    adjustments = db.scalars(
+        select(StandingAdjustment).where(StandingAdjustment.championship_id == championship.id)
+    ).all()
+    if not adjustments:
+        return snapshots
+
+    for snapshot in snapshots:
+        # Un ajustement compte à partir du rallye concerné (ou partout s'il n'en vise aucun)
+        applicable = [
+            a
+            for a in adjustments
+            if a.rally is None or snapshot.rally is None or a.rally.order_index <= snapshot.rally.order_index
+        ]
+        totals: dict[int, int] = defaultdict(int)
+        reasons: dict[int, list[str]] = defaultdict(list)
+        for a in applicable:
+            totals[a.driver_id] += a.points
+            reasons[a.driver_id].append(f"{a.points:+d} pts : {a.reason}")
+        reordered = apply_adjustments(
+            [(e["driver_id"], e["position"], e["points"]) for e in snapshot.entries], dict(totals)
+        )
+        snapshot.entries = [
+            {
+                **snapshot.entries[i],
+                "position": position,
+                "points": points,
+                "adjustment": totals.get(snapshot.entries[i]["driver_id"], 0),
+                "adjustment_reasons": reasons.get(snapshot.entries[i]["driver_id"], []),
+            }
+            for i, position, points in reordered
+        ]
+    return snapshots
+
+
 def championship_standings(db: Session, championship: Championship, after_rally_id: int | None = None) -> dict:
     """Classement général après un rallye (par défaut le dernier), avec évolution par rapport au précédent."""
     rallies = list(championship.rallies)
@@ -245,15 +311,15 @@ def championship_standings(db: Session, championship: Championship, after_rally_
     }
 
 
-def _podium_entry(result: RallyResult) -> dict:
+def _podium_entry(result: RallyResult, c: Classified) -> dict:
     return {
-        "position": result.position,
+        "position": c.position,
         "name": display_name(result.driver, result.raw_name),
         "driver_id": result.driver_id,
         "vehicle": result.vehicle,
         "platform": result.platform,
-        "time": format_time_ms(result.time_ms),
-        "diff": format_time_ms(result.diff_ms),
+        "time": format_time_ms(c.time_ms),
+        "diff": format_time_ms(c.diff_ms or 0),
     }
 
 
@@ -268,7 +334,7 @@ def home_payload(db: Session, championship: Championship) -> dict:
     leader = table[0] if table else None
     second = next((e for e in table if e["position"] > (leader["position"] if leader else 0)), None)
     leader_wins = (
-        sum(1 for r in done if r.results[0].driver_id is not None and r.results[0].driver_id == leader["driver_id"])
+        sum(1 for r in done if (w := rally_winner(r)) is not None and w.driver_id == leader["driver_id"])
         if leader and leader["driver_id"] is not None
         else 0
     )
@@ -285,8 +351,8 @@ def home_payload(db: Session, championship: Championship) -> dict:
             {
                 **_rally_ref(last, rallies),
                 **rally_dates(last),
-                "podium": [_podium_entry(r) for r in last.results[:3]],
-                "top5": [_podium_entry(r) for r in last.results[:5]],
+                "podium": [_podium_entry(r, c) for r, c in classified_results(last) if c.position][:3],
+                "top5": [_podium_entry(r, c) for r, c in classified_results(last) if c.position][:5],
                 "result_count": len(last.results),
             }
             if last

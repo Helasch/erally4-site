@@ -113,6 +113,10 @@ class RallyResult(Base):
     time_ms: Mapped[int] = mapped_column(BigInteger)
     diff_ms: Mapped[int] = mapped_column(BigInteger)
     platform: Mapped[str] = mapped_column(String(16))
+    # Pénalités décidées par les organisateurs (article 8 du règlement)
+    penalty_ms: Mapped[int] = mapped_column(BigInteger, default=0)
+    disqualified: Mapped[bool] = mapped_column(Boolean, default=False)
+    penalty_reason: Mapped[str | None] = mapped_column(String(255))
 
     driver: Mapped[Driver | None] = relationship()
 
@@ -193,3 +197,21 @@ class PilotSession(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     account: Mapped[PilotAccount] = relationship()
+
+
+class StandingAdjustment(Base):
+    """Ajustement de points au classement général (pénalité ou correction des organisateurs)."""
+
+    __tablename__ = "standing_adjustments"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    championship_id: Mapped[int] = mapped_column(ForeignKey("championships.id", ondelete="CASCADE"))
+    driver_id: Mapped[int] = mapped_column(ForeignKey("drivers.id", ondelete="CASCADE"))
+    # Rallye concerné : l'ajustement s'applique au classement après ce rallye et aux suivants
+    rally_id: Mapped[int | None] = mapped_column(ForeignKey("rallies.id", ondelete="SET NULL"))
+    points: Mapped[int] = mapped_column(Integer)
+    reason: Mapped[str] = mapped_column(String(255))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    driver: Mapped[Driver] = relationship()
+    rally: Mapped["Rally | None"] = relationship()
