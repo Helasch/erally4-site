@@ -37,7 +37,7 @@ export default function AdminRallyPage() {
   return (
     <main>
       <p>
-        <Link href="/admin">← Championnats</Link>
+        <Link href="/admin/championnats">← Championnats</Link>
       </p>
       <h1>{rally.name}</h1>
       <p className="muted">

@@ -146,7 +146,7 @@ export default function ImportPage() {
         </select>
         {championships.length === 0 && (
           <p className="alert warn">
-            Créez d&apos;abord un championnat sur la page <Link href="/admin">Championnats</Link>.
+            Créez d&apos;abord un championnat sur la page <Link href="/admin/championnats">Championnats</Link>.
           </p>
         )}
 

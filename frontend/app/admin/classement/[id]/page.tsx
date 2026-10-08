@@ -29,7 +29,7 @@ export default function AdminStandingsPage() {
   return (
     <main>
       <p>
-        <Link href="/admin">← Championnats</Link>
+        <Link href="/admin/championnats">← Championnats</Link>
       </p>
       <h1>Classement général importé</h1>
       {standings.mode === "custom" && (

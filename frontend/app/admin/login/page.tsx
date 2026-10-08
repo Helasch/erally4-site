@@ -28,9 +28,14 @@ export default function LoginPage() {
   }
 
   return (
-    <main style={{ maxWidth: 360, margin: "40px auto" }}>
-      <h1>Administration</h1>
-      <form className="card" onSubmit={submit}>
+    <main style={{ width: "100%", maxWidth: 380 }}>
+      <form className="card login-card" onSubmit={submit}>
+        <div className="login-brand">
+          <span className="logo-erally">
+            eRally<span className="logo-4">4</span>
+          </span>
+          <span className="sidebar-brand-sub">Administration</span>
+        </div>
         <label htmlFor="username">Identifiant</label>
         <input id="username" name="username" autoComplete="username" required style={{ width: "100%" }} />
         <label htmlFor="password">Mot de passe</label>
