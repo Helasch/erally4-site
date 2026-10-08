@@ -1,5 +1,7 @@
 "use client";
 
+import type { RallyStatus } from "./format";
+
 // Appels à l'API admin depuis le navigateur (même origine, cookie de session httpOnly).
 // Toute requête qui modifie quelque chose envoie le jeton CSRF de la session.
 
@@ -58,7 +60,9 @@ export type AdminRally = {
   id: number;
   name: string;
   order_index: number;
-  event_date: string | null;
+  starts_at: string | null;
+  ends_at: string | null;
+  status: RallyStatus;
   result_count: number;
   unidentified: number;
 };

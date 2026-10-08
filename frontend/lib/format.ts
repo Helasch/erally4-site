@@ -49,3 +49,66 @@ export function carSlug(vehicle: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
 }
+
+// --- Dates et statut des rallyes -------------------------------------------------------
+// Les dates arrivent sans fuseau ("2026-03-12T20:00:00") et sont déjà en heure de Paris :
+// on les lit et on les affiche telles quelles (UTC des deux côtés), sans conversion.
+
+export type RallyStatus = "done" | "done_pending" | "live" | "next" | "upcoming";
+
+function parseLocal(value: string): Date {
+  const [d, t = "00:00"] = value.split("T");
+  const [y, m, day] = d.split("-").map(Number);
+  const [h, min] = t.split(":").map(Number);
+  return new Date(Date.UTC(y, m - 1, day, h, min));
+}
+
+const fmt = (opts: Intl.DateTimeFormatOptions) => new Intl.DateTimeFormat("fr-FR", { timeZone: "UTC", ...opts });
+const dayMonth = fmt({ day: "numeric", month: "short" });
+const dayMonthYear = fmt({ day: "numeric", month: "short", year: "numeric" });
+const weekdayDayMonth = fmt({ weekday: "short", day: "numeric", month: "short" });
+const time = fmt({ hour: "2-digit", minute: "2-digit" });
+
+const isWholeDay = (s: Date, e: Date) =>
+  s.getUTCHours() === 0 && s.getUTCMinutes() === 0 && e.getUTCHours() === 23 && e.getUTCMinutes() === 59;
+
+/** Plage courte : « 12 – 15 févr. 2026 », « 8 sept. 2026 » ; null si pas de date. */
+export function formatRallyDates(startsAt: string | null, endsAt: string | null): string | null {
+  if (!startsAt) return null;
+  const s = parseLocal(startsAt);
+  const e = endsAt ? parseLocal(endsAt) : s;
+  const sameDay = s.toISOString().slice(0, 10) === e.toISOString().slice(0, 10);
+  if (sameDay) return dayMonthYear.format(s);
+  const sameMonth = s.getUTCMonth() === e.getUTCMonth() && s.getUTCFullYear() === e.getUTCFullYear();
+  return sameMonth
+    ? `${s.getUTCDate()} – ${dayMonthYear.format(e)}`
+    : `${dayMonth.format(s)} – ${dayMonthYear.format(e)}`;
+}
+
+/** Plage détaillée avec heures : « du jeu. 12 févr. 20:00 au dim. 15 févr. 23:59 ». */
+export function formatRallyDatesLong(startsAt: string | null, endsAt: string | null): string | null {
+  if (!startsAt) return null;
+  const s = parseLocal(startsAt);
+  if (!endsAt) return `à partir du ${weekdayDayMonth.format(s)} à ${time.format(s)}`;
+  const e = parseLocal(endsAt);
+  if (isWholeDay(s, e)) return formatRallyDates(startsAt, endsAt);
+  const sameDay = s.toISOString().slice(0, 10) === e.toISOString().slice(0, 10);
+  return sameDay
+    ? `le ${weekdayDayMonth.format(s)}, de ${time.format(s)} à ${time.format(e)}`
+    : `du ${weekdayDayMonth.format(s)} ${time.format(s)} au ${weekdayDayMonth.format(e)} ${time.format(e)}`;
+}
+
+export function statusLabel(status: RallyStatus): { text: string; kind: string } {
+  switch (status) {
+    case "done":
+      return { text: "Terminé", kind: "done" };
+    case "done_pending":
+      return { text: "Terminé · résultats à venir", kind: "done-pending" };
+    case "live":
+      return { text: "En cours", kind: "live" };
+    case "next":
+      return { text: "Prochain", kind: "next" };
+    default:
+      return { text: "À venir", kind: "todo" };
+  }
+}

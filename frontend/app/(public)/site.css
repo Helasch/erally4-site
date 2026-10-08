@@ -1412,7 +1412,8 @@
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
 }
 
-.site .round.next {
+.site .round.status-next,
+.site .round.status-live {
   outline: 3px solid var(--s-red);
   outline-offset: -3px;
 }
@@ -1433,7 +1434,7 @@
   color: var(--s-ink);
 }
 
-.site .round.next .round-num {
+.site .round.status-next .round-num {
   background: var(--s-black);
   color: #fff;
 }
@@ -2122,5 +2123,57 @@
     bottom: 4%;
     max-width: 85%;
     max-height: 70%;
+  }
+}
+
+/* --- Statuts des rallyes (selon leurs dates) ---------------------------------- */
+
+.site .cal-status.done-pending {
+  background: #3a3133;
+  color: #fff;
+}
+
+.site .cal-status.live {
+  background: var(--s-red-bright);
+  color: #fff;
+}
+
+.site .cal-status.live::before,
+.site .round-flag-live::before {
+  content: "";
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #fff;
+  vertical-align: 1px;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
+.site .cal-status.next {
+  border: 1.5px solid var(--s-red);
+  color: var(--s-red-text);
+}
+
+.site .calendar li.status-live > div,
+.site .calendar li.status-next > div {
+  border-top-color: var(--s-red-bright);
+}
+
+.site .round.status-live .round-num {
+  background: var(--s-red-bright);
+}
+
+@keyframes live-pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site .cal-status.live::before,
+  .site .round-flag-live::before {
+    animation: none;
   }
 }
