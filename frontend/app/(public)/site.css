@@ -1752,3 +1752,316 @@
     grid-template-columns: 1fr;
   }
 }
+
+/* --- Comptes pilotes : navigation, connexion, mon compte ----------------------- */
+
+.site .nav-right {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex: none;
+}
+
+.site .nav-login {
+  font-family: var(--s-display);
+  font-weight: 800;
+  font-size: 0.95rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #fff;
+  text-decoration: none;
+  padding: 8px 4px;
+  border-bottom: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.site .nav-login:hover {
+  border-bottom-color: #fff;
+}
+
+.site .nav-mobile-extra {
+  display: none;
+}
+
+.site .account-menu {
+  position: relative;
+}
+
+.site .account-button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 10px 3px 3px;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.15);
+  color: #fff;
+  font: 600 0.9rem var(--s-body);
+  cursor: pointer;
+}
+
+.site .account-button:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.site .account-name {
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site .account-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 8px);
+  min-width: 200px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  background: #fff;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+  z-index: 50;
+}
+
+.site .account-dropdown a,
+.site .account-dropdown button {
+  padding: 10px 12px;
+  border: none;
+  background: none;
+  text-align: left;
+  font: 600 0.95rem var(--s-body);
+  color: var(--s-ink);
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.site .account-dropdown a:hover,
+.site .account-dropdown button:hover {
+  background: var(--s-tile);
+  color: var(--s-red-text);
+}
+
+.site .avatar-photo {
+  display: inline-block;
+  flex: none;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--s-tile);
+}
+
+.site .band-inner.narrow {
+  max-width: 760px;
+}
+
+.site .notice {
+  margin: 0 0 16px;
+  padding: 12px 16px;
+  background: #fff;
+  border-left: 4px solid var(--s-up);
+}
+
+.site .notice-ok {
+  border-left-color: #1d7a3a;
+}
+
+.site .notice-error {
+  border-left-color: var(--s-red-bright);
+  color: #8f1408;
+}
+
+.site .small {
+  font-size: 0.85rem;
+}
+
+.site .muted {
+  color: var(--s-muted);
+}
+
+.site .login-box {
+  text-align: center;
+  padding: 36px 32px;
+}
+
+.site .login-box h2,
+.site .account-form h2 {
+  margin: 0 0 12px;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.8rem;
+  text-transform: uppercase;
+  color: var(--s-ink);
+}
+
+.site .login-box p {
+  max-width: 480px;
+  margin: 0 auto 20px;
+}
+
+.site .btn-discord {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  background: #5865f2;
+  color: #fff;
+  clip-path: polygon(0 0, 100% 0, calc(100% - 12px) 100%, 0 100%);
+}
+
+.site .btn-discord:hover {
+  background: #4752c4;
+}
+
+.site .account-form {
+  margin-bottom: 16px;
+}
+
+.site .account-form label {
+  display: block;
+  margin: 16px 0 6px;
+  font-weight: 700;
+  font-size: 0.9rem;
+}
+
+.site .account-form input,
+.site .account-form select {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid #d6d0cd;
+  border-radius: 0;
+  background: var(--s-tile);
+  font: 1rem var(--s-body);
+  color: var(--s-ink);
+}
+
+.site .account-form input:focus,
+.site .account-form select:focus {
+  outline: 2px solid var(--s-red);
+  outline-offset: 1px;
+  background: #fff;
+}
+
+.site .account-form .btn {
+  margin-top: 20px;
+  border: none;
+  cursor: pointer;
+}
+
+.site .hint {
+  margin: 6px 0 0;
+  color: var(--s-muted);
+  font-size: 0.85rem;
+}
+
+.site .photo-row {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.site .photo-actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.site .btn-dark {
+  background: var(--s-black);
+  color: #fff;
+  border: none;
+  cursor: pointer;
+  padding: 10px 18px;
+  font-size: 0.95rem;
+}
+
+.site .btn-text {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--s-red-text);
+  font: 700 0.95rem var(--s-body);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.site .danger-zone {
+  border-top: 3px solid var(--s-red-bright);
+}
+
+.site .btn-text.danger {
+  margin-top: 12px;
+}
+
+.site .tag-ok {
+  border-color: #6fd08f;
+  color: #b9f0c9;
+}
+
+.site .tag-warn {
+  border-color: #f5d67a;
+  color: #f5e3a8;
+}
+
+.site .tag-link {
+  text-decoration: none;
+}
+
+.site .tag-link:hover {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+/* Textes longs (confidentialité, règlement) */
+.site .prose {
+  line-height: 1.7;
+}
+
+.site .prose h2 {
+  margin: 32px 0 8px;
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 1.6rem;
+  text-transform: uppercase;
+  color: var(--s-ink);
+}
+
+.site .prose h2:first-child {
+  margin-top: 0;
+}
+
+.site .prose a {
+  color: var(--s-red-text);
+}
+
+@media (max-width: 860px) {
+  .site .nav-right {
+    display: none;
+  }
+
+  .site .nav-links .nav-mobile-extra {
+    display: block;
+    padding: 14px 0;
+    border: none;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+    background: none;
+    text-align: left;
+    font-family: var(--s-display);
+    font-weight: 700;
+    font-size: 1.25rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #fff;
+    text-decoration: none;
+    cursor: pointer;
+  }
+
+  .site .photo-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .site .login-box {
+    padding: 24px 18px;
+  }
+}

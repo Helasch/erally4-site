@@ -96,6 +96,8 @@ class Driver(Base):
     name: Mapped[str] = mapped_column(String(64), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
+    account: Mapped["PilotAccount | None"] = relationship(back_populates="driver", uselist=False)
+
 
 class RallyResult(Base):
     __tablename__ = "rally_results"
@@ -153,3 +155,40 @@ class Import(Base):
     row_count: Mapped[int] = mapped_column(Integer)
     admin_id: Mapped[int | None] = mapped_column(ForeignKey("admins.id", ondelete="SET NULL"))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+
+LINK_STATUSES = ("none", "pending", "linked")
+
+
+class PilotAccount(Base):
+    """Compte d'un pilote, créé via la connexion Discord."""
+
+    __tablename__ = "pilot_accounts"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    discord_id: Mapped[str] = mapped_column(String(32), unique=True)
+    discord_username: Mapped[str] = mapped_column(String(64))
+    # Pseudo affiché sur le site et dans les classements (choisi par le pilote)
+    site_name: Mapped[str | None] = mapped_column(String(32), unique=True)
+    # Pseudo RaceNet déclaré, sert à relier le compte aux résultats
+    racenet_name: Mapped[str | None] = mapped_column(String(64))
+    driver_id: Mapped[int | None] = mapped_column(ForeignKey("drivers.id", ondelete="SET NULL"), unique=True)
+    link_status: Mapped[str] = mapped_column(Enum(*LINK_STATUSES, name="link_status"), default="none")
+    vehicle: Mapped[str | None] = mapped_column(String(64))
+    avatar_file: Mapped[str | None] = mapped_column(String(128))
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    driver: Mapped["Driver | None"] = relationship(back_populates="account")
+
+
+class PilotSession(Base):
+    __tablename__ = "pilot_sessions"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    token_hash: Mapped[str] = mapped_column(String(64), unique=True)
+    csrf_token: Mapped[str] = mapped_column(String(64))
+    account_id: Mapped[int] = mapped_column(ForeignKey("pilot_accounts.id", ondelete="CASCADE"))
+    expires_at: Mapped[datetime] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    account: Mapped[PilotAccount] = relationship()

@@ -68,8 +68,9 @@ export default async function PilotePage({ params }: { params: Promise<{ id: str
     <>
       <PageHeader title={driver.name} crumbs={[{ href: "/pilotes", label: "Pilotes" }]}>
         <div className="driver-head">
-          <Avatar name={driver.name} size={72} />
+          <Avatar name={driver.name} url={driver.avatar_url} size={96} />
           <div className="driver-tags">
+            {driver.racenet_name && <span className="tag-light">RaceNet : {driver.racenet_name}</span>}
             {driver.platform && <span className="tag-light">{driver.platform}</span>}
             {driver.vehicle && <span className="tag-light">{driver.vehicle}</span>}
             {season && <span className="tag-light">{season.championship.name}</span>}

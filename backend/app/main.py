@@ -3,11 +3,12 @@ from fastapi.responses import JSONResponse
 from sqlalchemy import text
 
 from app.db import engine
-from app.routers import admin, public
+from app.routers import admin, pilots, public
 
 
 app = FastAPI(title="eRally4 Cup API", docs_url=None, redoc_url=None, openapi_url=None)
 app.include_router(public.router)
+app.include_router(pilots.router)
 app.include_router(admin.auth)
 app.include_router(admin.router)
 

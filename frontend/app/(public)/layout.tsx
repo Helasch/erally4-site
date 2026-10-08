@@ -64,6 +64,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
             <Link href="/classements">Classements</Link>
             <Link href="/calendrier">Calendrier</Link>
             <Link href="/reglement">Règlement</Link>
+            <Link href="/confidentialite">Confidentialité</Link>
           </nav>
           <nav className="footer-col" aria-label="Communauté">
             <p className="footer-title">Communauté</p>

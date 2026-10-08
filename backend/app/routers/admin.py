@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 from sqlalchemy import func, select, update
 from sqlalchemy.orm import Session
 
+from app.avatars import delete_avatar
 from app.config import settings
 from app.csv_import import CsvError, parse_csv
 from app.db import get_db
@@ -15,6 +16,7 @@ from app.models import (
     Championship,
     Driver,
     Import,
+    PilotAccount,
     RacenetStanding,
     Rally,
     RallyResult,
@@ -22,16 +24,20 @@ from app.models import (
 )
 from app.security import authenticate, check_ip_rate_limit, client_ip, close_session, current_session, open_session
 from app.services import (
+    admin_accounts,
+    admin_link,
     build_preview,
     championship_standings,
     commit_import,
+    delete_account,
+    discord_redirect_uri,
     get_championship,
     get_or_create_driver,
     get_rally,
     not_found,
     rally_results_payload,
-    scoring_table,
     read_settings,
+    scoring_table,
     validate_driver_name,
     write_settings,
 )
@@ -365,6 +371,10 @@ def merge_driver(driver_id: int, body: DriverMerge, db: Session = Depends(get_db
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Impossible de fusionner un pilote avec lui-même.")
     db.execute(update(RallyResult).where(RallyResult.driver_id == source.id).values(driver_id=target.id))
     db.execute(update(RacenetStanding).where(RacenetStanding.driver_id == source.id).values(driver_id=target.id))
+    # Un compte pilote relié au doublon suit la fusion si la cible n'a pas déjà de compte
+    if source.account is not None and target.account is None:
+        source.account.driver_id = target.id
+        db.flush()
     db.delete(source)
     db.commit()
     return {"id": target.id, "name": target.name}
@@ -398,14 +408,82 @@ def assign_standing(standing_id: int, body: AssignDriver, db: Session = Depends(
 
 
 class SettingsBody(BaseModel):
-    discord_url: str = Field(default="", max_length=200)
+    # None = ne pas modifier (le Client Secret n'est jamais réaffiché)
+    discord_url: str | None = Field(default=None, max_length=200)
+    discord_client_id: str | None = Field(default=None, max_length=32)
+    discord_client_secret: str | None = Field(default=None, max_length=200)
+    discord_guild_id: str | None = Field(default=None, max_length=32)
+    site_url: str | None = Field(default=None, max_length=200)
+
+
+def _settings_payload(db: Session, request: Request) -> dict:
+    # Adresse de retour à déclarer dans l'application Discord (onglet OAuth2 → Redirects)
+    return {**read_settings(db), "discord_redirect_uri": discord_redirect_uri(db, request)}
 
 
 @router.get("/settings", dependencies=protected)
-def get_settings(db: Session = Depends(get_db)):
-    return read_settings(db)
+def get_settings(request: Request, db: Session = Depends(get_db)):
+    return _settings_payload(db, request)
 
 
 @router.put("/settings", dependencies=protected)
-def put_settings(body: SettingsBody, db: Session = Depends(get_db)):
-    return write_settings(db, body.model_dump())
+def put_settings(body: SettingsBody, request: Request, db: Session = Depends(get_db)):
+    write_settings(db, body.model_dump())
+    return _settings_payload(db, request)
+
+
+# --- Comptes pilotes ------------------------------------------------------------------
+
+
+class LinkBody(BaseModel):
+    driver_id: int
+
+
+def _account(db: Session, account_id: int) -> PilotAccount:
+    account = db.get(PilotAccount, account_id)
+    if account is None:
+        raise not_found("Compte")
+    return account
+
+
+@router.get("/accounts", dependencies=protected)
+def list_accounts(db: Session = Depends(get_db)):
+    return admin_accounts(db)
+
+
+@router.post("/accounts/{account_id}/link", dependencies=protected)
+def link_account(account_id: int, body: LinkBody, db: Session = Depends(get_db)):
+    admin_link(db, _account(db, account_id), body.driver_id)
+    return {"ok": True}
+
+
+@router.post("/accounts/{account_id}/unlink", dependencies=protected)
+def unlink_account(account_id: int, db: Session = Depends(get_db)):
+    account = _account(db, account_id)
+    account.driver_id = None
+    account.link_status = "pending" if account.racenet_name else "none"
+    db.commit()
+    return {"ok": True}
+
+
+@router.post("/accounts/{account_id}/reset-name", dependencies=protected)
+def reset_account_name(account_id: int, db: Session = Depends(get_db)):
+    """Retire un pseudo inapproprié : le pilote devra en choisir un autre."""
+    _account(db, account_id).site_name = None
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/accounts/{account_id}/avatar", dependencies=protected)
+def remove_account_avatar(account_id: int, db: Session = Depends(get_db)):
+    account = _account(db, account_id)
+    delete_avatar(account.avatar_file)
+    account.avatar_file = None
+    db.commit()
+    return {"ok": True}
+
+
+@router.delete("/accounts/{account_id}", dependencies=protected)
+def remove_account(account_id: int, db: Session = Depends(get_db)):
+    delete_account(db, _account(db, account_id))
+    return {"ok": True}
