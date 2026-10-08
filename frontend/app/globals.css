@@ -1,37 +1,25 @@
+/* Charte eRally4 Cup : rouge foncé, gris clair, tableaux crème à filets rouges */
 :root {
-  --bg: #f6f7f9;
-  --surface: #ffffff;
-  --text: #15181d;
-  --muted: #5d6573;
-  --border: #e1e4ea;
-  --accent: #d6411e;
+  --red-dark: #7d0610;
+  --red: #9a0a14;
+  --red-bright: #c4000f;
+  --bg: #e6e5e3;
+  --surface: #f8f3f1;
+  --text: #7d0610;
+  --text-body: #2a1a1b;
+  --muted: #8a6b6d;
+  --border: #9a0a14;
+  --border-soft: #e2cfcc;
+  --accent: #9a0a14;
   --accent-text: #ffffff;
-  --warn-bg: #fff4d6;
-  --warn-text: #7a5300;
-  --error-bg: #fde7e4;
-  --error-text: #9b1c0c;
-  --ok-text: #1d7a3a;
-  --gold: #c99a06;
-  --silver: #8a939f;
-  --bronze: #a8662c;
-  --radius: 10px;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --bg: #0f1115;
-    --surface: #181b21;
-    --text: #e9ecf1;
-    --muted: #9aa3b2;
-    --border: #2a2f38;
-    --accent: #ff6a3d;
-    --accent-text: #111;
-    --warn-bg: #3a2d08;
-    --warn-text: #f5d67a;
-    --error-bg: #3d1611;
-    --error-text: #ffb4a8;
-    --ok-text: #6fd08f;
-  }
+  --warn-bg: #fff1c9;
+  --warn-text: #6b4a00;
+  --error-bg: #fde3e0;
+  --error-text: #8f1408;
+  --ok-text: #1d6b35;
+  --radius: 4px;
+  --font-display-stack: var(--font-display), "Arial Narrow", sans-serif;
+  --font-body-stack: var(--font-body), system-ui, sans-serif;
 }
 
 * {
@@ -41,8 +29,8 @@
 body {
   margin: 0;
   background: var(--bg);
-  color: var(--text);
-  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: var(--text-body);
+  font-family: var(--font-body-stack);
   line-height: 1.5;
 }
 
@@ -53,53 +41,112 @@ a {
 .container {
   max-width: 960px;
   margin: 0 auto;
-  padding: 16px;
+  padding: 8px 16px 48px;
 }
+
+/* --- Bandeau et logo ---------------------------------------------------------- */
 
 .site-header {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  position: relative;
+  background: linear-gradient(135deg, var(--red-dark) 0%, var(--red) 55%, var(--red-dark) 100%);
+  clip-path: polygon(0 0, 100% 0, 100% 84%, 0 100%);
+  padding: 28px 16px clamp(48px, 9vw, 84px);
+  text-align: center;
 }
 
-.site-header .container {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  padding-top: 12px;
-  padding-bottom: 12px;
+.site-nav {
+  position: absolute;
+  top: 12px;
+  right: 16px;
 }
 
-.brand {
-  font-weight: 800;
-  font-size: 1.15rem;
-  color: var(--text);
+.site-nav a {
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: rgba(255, 255, 255, 0.85);
   text-decoration: none;
-}
-
-.brand span {
-  color: var(--accent);
-}
-
-nav a {
   margin-left: 16px;
-  color: var(--muted);
-  text-decoration: none;
-  font-weight: 500;
 }
 
-nav a:hover {
+.site-nav a:hover {
+  color: #fff;
+}
+
+.logo {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  text-decoration: none;
+  line-height: 0.85;
+  margin-top: 12px;
+}
+
+.logo-erally {
+  font-family: var(--font-display-stack);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(3.2rem, 11vw, 6.5rem);
+  letter-spacing: -0.02em;
+  color: #fff;
+}
+
+.logo-4 {
+  color: #e1061a;
+  -webkit-text-stroke: 0.09em #fff;
+  paint-order: stroke fill;
+  font-size: 1.15em;
+  margin-left: 0.02em;
+}
+
+.logo-cup {
+  display: inline-block;
+  margin-top: 0.15em;
+  padding: 0.05em 0.5em 0.1em;
+  background: #fff;
+  color: var(--red);
+  font-family: var(--font-display-stack);
+  font-style: italic;
+  font-weight: 900;
+  font-size: clamp(1.8rem, 6vw, 3.4rem);
+  transform: skewX(-12deg);
+}
+
+/* --- Titres ------------------------------------------------------------------- */
+
+h1,
+h2,
+.section-title {
+  font-family: var(--font-display-stack);
+  font-weight: 800;
+  text-transform: uppercase;
   color: var(--text);
+  letter-spacing: 0.01em;
+  line-height: 1.1;
+}
+
+.section-title {
+  text-align: center;
+  font-size: clamp(1.8rem, 6vw, 2.8rem);
+  margin: 24px 0 4px;
+}
+
+.section-subtitle {
+  text-align: center;
+  color: var(--muted);
+  font-weight: 600;
+  margin: 0 0 16px;
 }
 
 h1 {
-  font-size: 1.6rem;
-  margin: 8px 0 4px;
+  font-size: 2rem;
+  margin: 16px 0 8px;
 }
 
 h2 {
-  font-size: 1.2rem;
-  margin: 28px 0 8px;
+  font-size: 1.5rem;
+  margin: 28px 0 10px;
 }
 
 .muted {
@@ -108,64 +155,74 @@ h2 {
 
 .card {
   background: var(--surface);
-  border: 1px solid var(--border);
+  border: 2px solid var(--border);
   border-radius: var(--radius);
   padding: 16px;
   margin: 16px 0;
 }
 
-/* Tableaux de classement : défilement horizontal sur mobile */
+/* --- Tableaux de classement ------------------------------------------------- */
+
 .table-wrap {
   overflow-x: auto;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.04);
 }
 
 table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  font-family: var(--font-display-stack);
+  font-weight: 600;
+  font-size: 1.25rem;
+  color: var(--text);
 }
 
 th,
 td {
-  padding: 8px 12px;
-  text-align: left;
+  padding: 8px 14px;
+  text-align: center;
   white-space: nowrap;
+  border: 2px solid var(--border);
+}
+
+/* Pas de cadre extérieur, comme sur les visuels */
+tr > :first-child {
+  border-left: none;
+}
+tr > :last-child {
+  border-right: none;
+}
+thead tr:first-child > * {
+  border-top: none;
+}
+tbody tr:last-child > * {
+  border-bottom: none;
 }
 
 th {
-  font-size: 0.8rem;
+  font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.03em;
-  color: var(--muted);
-  border-bottom: 1px solid var(--border);
-}
-
-tbody tr + tr td {
-  border-top: 1px solid var(--border);
+  font-size: 1.3rem;
 }
 
 td.num,
 th.num {
-  text-align: right;
   font-variant-numeric: tabular-nums;
 }
 
 td.pos {
-  font-weight: 700;
   width: 1%;
 }
 
-tr.p1 td.pos {
-  color: var(--gold);
+td.name {
+  min-width: 160px;
 }
-tr.p2 td.pos {
-  color: var(--silver);
-}
-tr.p3 td.pos {
-  color: var(--bronze);
+
+td .sub {
+  color: var(--muted);
+  font-size: 0.9rem;
 }
 
 tr.anonymous td {
@@ -174,12 +231,38 @@ tr.anonymous td {
 
 .badge {
   display: inline-block;
-  font-size: 0.75rem;
-  padding: 1px 8px;
-  border-radius: 999px;
-  border: 1px solid var(--border);
-  color: var(--muted);
+  font-family: var(--font-display-stack);
+  font-size: 0.85rem;
+  font-weight: 700;
+  padding: 0 8px;
+  border-radius: 2px;
+  border: 1.5px solid var(--border);
+  color: var(--text);
+  text-transform: uppercase;
 }
+
+/* Tableaux de l'admin : plus compacts, alignés à gauche */
+.admin table {
+  font-family: var(--font-body-stack);
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--text-body);
+}
+
+.admin th,
+.admin td {
+  text-align: left;
+  border-width: 1px;
+  border-color: var(--border-soft);
+}
+
+.admin th {
+  font-family: var(--font-display-stack);
+  color: var(--text);
+  font-size: 1rem;
+}
+
+/* --- Liste des rallyes -------------------------------------------------------- */
 
 .rally-list {
   display: grid;
@@ -189,32 +272,62 @@ tr.anonymous td {
   list-style: none;
 }
 
-.rally-list a {
+.rally-list a,
+.rally-list .disabled {
   display: block;
+  height: 100%;
+  padding: 12px 16px;
   background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 12px 14px;
+  border: 2px solid var(--border);
+  border-left-width: 6px;
   text-decoration: none;
   color: var(--text);
+  font-family: var(--font-display-stack);
 }
 
 .rally-list a:hover {
-  border-color: var(--accent);
+  background: #fff;
 }
 
 .rally-list .disabled {
-  display: block;
-  padding: 12px 14px;
-  border: 1px dashed var(--border);
-  border-radius: var(--radius);
+  border-color: var(--border-soft);
   color: var(--muted);
 }
 
-/* Formulaires (admin) */
+.rally-list .round {
+  font-weight: 700;
+  text-transform: uppercase;
+  font-size: 0.95rem;
+  opacity: 0.75;
+}
+
+.rally-list .rally-name {
+  display: block;
+  font-weight: 800;
+  font-size: 1.4rem;
+  text-transform: uppercase;
+  line-height: 1.1;
+}
+
+.rally-list small {
+  font-family: var(--font-body-stack);
+  color: var(--muted);
+}
+
+.back-link {
+  display: inline-block;
+  margin-top: 16px;
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-transform: uppercase;
+  text-decoration: none;
+}
+
+/* --- Formulaires (admin) ------------------------------------------------------ */
+
 label {
   display: block;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.9rem;
   margin: 12px 0 4px;
 }
@@ -222,10 +335,10 @@ label {
 input,
 select {
   font: inherit;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 8px;
+  color: var(--text-body);
+  background: #fff;
+  border: 1px solid #cdb9b6;
+  border-radius: var(--radius);
   padding: 7px 10px;
   max-width: 100%;
 }
@@ -233,10 +346,10 @@ select {
 button {
   font: inherit;
   font-weight: 600;
-  border: 1px solid var(--border);
-  background: var(--surface);
-  color: var(--text);
-  border-radius: 8px;
+  border: 1px solid #cdb9b6;
+  background: #fff;
+  color: var(--text-body);
+  border-radius: var(--radius);
   padding: 7px 14px;
   cursor: pointer;
 }
@@ -245,6 +358,10 @@ button.primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-text);
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 }
 
 button.danger {
@@ -261,7 +378,7 @@ button.link {
   background: none;
   padding: 0 4px;
   color: var(--accent);
-  font-weight: 500;
+  font-weight: 600;
 }
 
 .row {
@@ -271,8 +388,16 @@ button.link {
   gap: 8px;
 }
 
+.admin-nav a {
+  font-family: var(--font-display-stack);
+  font-weight: 700;
+  text-transform: uppercase;
+  text-decoration: none;
+  margin-right: 16px;
+}
+
 .alert {
-  border-radius: 8px;
+  border-radius: var(--radius);
   padding: 10px 12px;
   margin: 12px 0;
 }
@@ -287,13 +412,10 @@ button.link {
   color: var(--warn-text);
 }
 
-.ok {
-  color: var(--ok-text);
-}
-
 .alert.ok {
-  border: 1px solid var(--border);
   background: var(--surface);
+  border: 1px solid var(--border-soft);
+  color: var(--ok-text);
 }
 
 .suggestions {
@@ -306,4 +428,31 @@ button.link {
 .suggestions button {
   font-size: 0.8rem;
   padding: 2px 8px;
+}
+
+.mobile-only {
+  display: none;
+}
+
+@media (max-width: 600px) {
+  .desktop-only {
+    display: none;
+  }
+  .mobile-only {
+    display: block;
+  }
+  td.name {
+    min-width: 0;
+    white-space: normal;
+  }
+  table {
+    font-size: 1rem;
+  }
+  th {
+    font-size: 1rem;
+  }
+  th,
+  td {
+    padding: 6px 5px;
+  }
 }

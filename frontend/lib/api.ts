@@ -72,12 +72,13 @@ export function formatDate(iso: string | null): string {
   return new Date(iso + "T00:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
 }
 
-// "01:08:48.945" -> "1:08:48.945" ; écart "00:00:36.316" -> "+36.316"
+// "01:08:48.945" -> "1:08:48.945" ; "00:34:27.583" -> "34:27.583" ; "00:00:26.347" -> "0:26.347"
 export function formatTime(value: string): string {
   return value.replace(/^00:/, "").replace(/^0(\d)/, "$1");
 }
 
+// Écart au premier : "00:00:26.347" -> "+0:26.347" ; premier -> "—"
 export function formatDiff(value: string): string {
   if (/^00:00:00\.000$/.test(value)) return "—";
-  return "+" + value.replace(/^00:(00:)?/, "").replace(/^0(\d)/, "$1");
+  return "+" + formatTime(value);
 }

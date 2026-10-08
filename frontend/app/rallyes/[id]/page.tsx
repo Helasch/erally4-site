@@ -20,11 +20,14 @@ export default async function RallyPage({ params }: { params: Promise<{ id: stri
 
   return (
     <main>
-      <p>
-        <Link href="/">← {rally.championship.name}</Link>
+      <Link href="/" className="back-link">
+        ← Classement général
+      </Link>
+      <h1 className="section-title">{rally.name} · Résultats</h1>
+      <p className="section-subtitle">
+        {rally.championship.name}
+        {rally.event_date && ` · ${formatDate(rally.event_date)}`}
       </p>
-      <h1>{rally.name}</h1>
-      {rally.event_date && <p className="muted">{formatDate(rally.event_date)}</p>}
 
       {rally.results.length === 0 ? (
         <p className="card muted">Résultats pas encore publiés.</p>
@@ -33,26 +36,25 @@ export default async function RallyPage({ params }: { params: Promise<{ id: stri
           <table>
             <thead>
               <tr>
-                <th>#</th>
+                <th>Pos</th>
                 <th>Pilote</th>
-                <th>Voiture</th>
+                <th className="desktop-only">Voiture</th>
                 <th className="num">Temps</th>
                 <th className="num">Écart</th>
-                <th>Plateforme</th>
-                {custom && <th className="num">Points</th>}
+                {custom && <th className="num">Pts</th>}
               </tr>
             </thead>
             <tbody>
               {rally.results.map((r) => (
-                <tr key={r.id} className={`p${r.position}`}>
+                <tr key={r.id}>
                   <td className="pos">{r.position}</td>
-                  <td>{r.name}</td>
-                  <td className="muted">{r.vehicle}</td>
-                  <td className="num">{formatTime(r.time)}</td>
-                  <td className="num muted">{formatDiff(r.diff)}</td>
-                  <td>
-                    <span className="badge">{r.platform}</span>
+                  <td className="name">
+                    {r.name} <span className="badge">{r.platform}</span>
+                    <span className="sub mobile-only">{r.vehicle}</span>
                   </td>
+                  <td className="desktop-only">{r.vehicle}</td>
+                  <td className="num">{formatTime(r.time)}</td>
+                  <td className="num">{formatDiff(r.diff)}</td>
                   {custom && <td className="num">{r.points}</td>}
                 </tr>
               ))}

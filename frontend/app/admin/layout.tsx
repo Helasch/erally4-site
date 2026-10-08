@@ -24,7 +24,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       .catch(() => router.replace("/admin/login"));
   }, [isLogin, router]);
 
-  if (isLogin) return <>{children}</>;
+  if (isLogin) return <div className="admin">{children}</div>;
   if (!me) return <p className="muted">Chargement…</p>;
 
   async function logout() {
@@ -33,10 +33,10 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   }
 
   return (
-    <>
-      <div className="row" style={{ justifyContent: "space-between", margin: "8px 0 16px" }}>
-        <nav className="row" style={{ gap: 0 }}>
-          <Link href="/admin" style={{ marginLeft: 0 }}>Championnats</Link>
+    <div className="admin">
+      <div className="row" style={{ justifyContent: "space-between", margin: "16px 0" }}>
+        <nav className="admin-nav">
+          <Link href="/admin">Championnats</Link>
           <Link href="/admin/import">Importer un CSV</Link>
           <Link href="/admin/pilotes">Pilotes</Link>
         </nav>
@@ -45,6 +45,6 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         </span>
       </div>
       {children}
-    </>
+    </div>
   );
 }
