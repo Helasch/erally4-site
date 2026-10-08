@@ -1079,3 +1079,310 @@
     gap: 20px;
   }
 }
+
+/* --- Page Classements ---------------------------------------------------------- */
+
+/* Onglets en bas de l'en-tête sombre (Championnat, puis un par rallye) */
+.site .head-tabs {
+  display: flex;
+  gap: 4px;
+  margin: 28px 0 -40px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.site .head-tabs a {
+  flex: none;
+  padding: 14px 22px;
+  font-family: var(--s-display);
+  font-weight: 800;
+  font-size: 1.05rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.8);
+  text-decoration: none;
+}
+
+.site .head-tabs a:hover {
+  color: #fff;
+}
+
+.site .head-tabs a.active {
+  background: var(--s-grey-bg);
+  color: var(--s-red-text);
+}
+
+.site .view-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: -24px 0 18px;
+}
+
+.site .view-label {
+  margin: 0;
+  color: var(--s-muted);
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.site .view-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.site .pill-select select {
+  appearance: none;
+  min-height: 38px;
+  padding: 6px 38px 6px 16px;
+  border: 1px solid #d6d0cd;
+  border-radius: 999px;
+  background: #fff
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' fill='none' stroke='%239e0b12' stroke-width='2'/%3E%3C/svg%3E")
+    no-repeat right 14px center;
+  font: 600 0.9rem var(--s-body);
+  color: var(--s-ink);
+  cursor: pointer;
+}
+
+/* Cartes des 3 premiers */
+.site .leader-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin: 0 0 24px;
+  padding: 0;
+  list-style: none;
+}
+
+.site .leader-cards li {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 18px 22px;
+  background: var(--s-card);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.site .leader-cards li.first {
+  background: var(--s-red);
+  color: #fff;
+}
+
+.site .leader-pos {
+  font-family: var(--s-display);
+  font-style: italic;
+  font-weight: 900;
+  font-size: 4rem;
+  line-height: 0.9;
+  color: var(--s-red-text);
+}
+
+.site .leader-cards li.first .leader-pos {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.site .leader-body {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.site .leader-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 1.2rem;
+  font-weight: 500;
+}
+
+.site .leader-name a {
+  text-decoration: none;
+}
+
+.site .leader-name a:hover {
+  text-decoration: underline;
+}
+
+.site .leader-body strong {
+  font-family: var(--s-display);
+  font-weight: 900;
+  font-size: 1.7rem;
+  line-height: 1.1;
+}
+
+.site .leader-body small {
+  font-size: 0.8rem;
+  color: var(--s-muted);
+}
+
+.site .leader-cards li.first small {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+/* Carte tableau : recherche, défilement, « Afficher tout » */
+.site .table-card .card-head {
+  margin-bottom: 12px;
+}
+
+.site .search input {
+  width: 100%;
+  max-width: 320px;
+  margin: 0 0 8px;
+  padding: 9px 14px;
+  border: 1px solid #d6d0cd;
+  border-radius: 999px;
+  background: var(--s-tile);
+  font: 1rem var(--s-body);
+  color: var(--s-ink);
+}
+
+.site .search input:focus {
+  outline: 2px solid var(--s-red);
+  outline-offset: 1px;
+  background: #fff;
+}
+
+.site .table-scroll {
+  overflow-x: auto;
+}
+
+.site .rank-table-lg td {
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.site .rank-table-lg td.pts {
+  font-size: 1.65rem;
+}
+
+.site .rank-table td.gained {
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.site .rank-table .muted-cell {
+  color: var(--s-muted);
+}
+
+.site .rank-table tr.unidentified td {
+  color: var(--s-muted);
+  font-style: italic;
+}
+
+.site .driver-cell {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.site .platform {
+  padding: 0 5px;
+  border: 1px solid #cfc8c5;
+  font-size: 0.65rem;
+  font-weight: 700;
+  font-style: normal;
+  letter-spacing: 0.05em;
+  color: var(--s-muted);
+}
+
+.site .show-sm,
+.site .only-sm {
+  display: none;
+}
+
+.site .show-all {
+  display: block;
+  width: 100%;
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid var(--s-line);
+  border-radius: 0;
+  background: var(--s-tile);
+  font: 800 0.95rem var(--s-display);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--s-red-text);
+  cursor: pointer;
+}
+
+.site .show-all:hover {
+  background: #ece8e5;
+}
+
+@media (max-width: 1000px) {
+  .site .hide-md {
+    display: none;
+  }
+}
+
+@media (max-width: 860px) {
+  .site .head-tabs {
+    margin-top: 20px;
+  }
+
+  .site .head-tabs a {
+    padding: 12px 16px;
+  }
+
+  .site .leader-cards {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .site .leader-cards li {
+    padding: 12px 16px;
+  }
+
+  .site .leader-pos {
+    font-size: 2.8rem;
+    width: 40px;
+  }
+
+  .site .leader-body strong {
+    font-size: 1.4rem;
+  }
+
+  .site .hide-sm {
+    display: none;
+  }
+
+  .site .show-sm {
+    display: block;
+    color: var(--s-muted);
+    font-size: 0.8rem;
+  }
+
+  .site .only-sm {
+    display: table-cell;
+  }
+
+  .site .rank-table th,
+  .site .rank-table td {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+
+  .site .rank-table td:nth-child(2) {
+    white-space: normal;
+    word-break: break-word;
+  }
+
+  .site .driver-cell {
+    flex-wrap: wrap;
+    gap: 2px 6px;
+  }
+
+  .site .search input {
+    max-width: none;
+  }
+
+  .site .rank-table-lg td.pts {
+    font-size: 1.4rem;
+  }
+}

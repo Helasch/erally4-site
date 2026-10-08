@@ -53,12 +53,20 @@ export type StandingRow = {
   identified: boolean;
   points: number;
   per_rally?: (number | null)[];
+  evol?: number | null;
+  gained?: number | null;
+  is_new?: boolean;
 };
 
 export type Standings = {
   championship: { id: number; name: string };
   mode: "racenet" | "custom";
-  rallies: { id: number; name: string }[];
+  rallies: { id: number; name: string; round: number }[];
+  /** Rallyes après lesquels un classement existe */
+  snapshots: { id: number; name: string; round: number }[];
+  /** Classement affiché : après ce rallye (null : ancien import sans rallye) */
+  after: { id: number; name: string; round: number } | null;
+  previous: { id: number; name: string; round: number } | null;
   unidentified: number;
   standings: StandingRow[];
 };

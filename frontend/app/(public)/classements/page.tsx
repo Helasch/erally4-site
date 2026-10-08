@@ -1,84 +1,204 @@
-import { Suspense } from "react";
-import { apiGet, loadChampionship, type ChampionshipListItem, type Standings } from "@/lib/api";
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import {
+  ApiError,
+  apiGet,
+  formatDiff,
+  formatTime,
+  loadChampionship,
+  type Championship,
+  type ChampionshipListItem,
+  type RallyDetail,
+  type Standings,
+} from "@/lib/api";
+import { shortRallyName } from "@/lib/format";
 import NavSelect from "../nav-select";
-import SectionTabs from "../section-tabs";
+import PageHeader from "../page-header";
+import { RallyTable, StandingsTable } from "./tables";
 
 export const dynamic = "force-dynamic";
 
-export default async function StandingsPage({ searchParams }: { searchParams: Promise<{ saison?: string }> }) {
-  const { saison } = await searchParams;
-  const championship = await loadChampionship(saison);
-  const [standings, seasons] = championship
-    ? await Promise.all([
-        apiGet<Standings>(`/api/championships/${championship.id}/standings`),
-        apiGet<ChampionshipListItem[]>("/api/championships"),
-      ])
-    : [null, []];
+type Search = { saison?: string; rallye?: string; apres?: string };
+
+const isId = (v?: string) => !!v && /^\d+$/.test(v);
+
+function href(base: Search, extra: Search) {
+  const params = new URLSearchParams();
+  const merged = { ...base, ...extra };
+  for (const [k, v] of Object.entries(merged)) if (v) params.set(k, v);
+  const qs = params.toString();
+  return `/classements${qs ? `?${qs}` : ""}`;
+}
+
+export default async function ClassementsPage({ searchParams }: { searchParams: Promise<Search> }) {
+  const search = await searchParams;
+  const championship = await loadChampionship(search.saison);
+  // On garde la saison dans les liens seulement si elle a été choisie explicitement
+  const keep: Search = isId(search.saison) ? { saison: search.saison } : {};
+
+  if (!championship) {
+    return (
+      <>
+        <PageHeader title="Classements" subtitle="Classement général et résultats de chaque rallye." />
+        <section className="band band-grey">
+          <div className="band-inner">
+            <p className="empty">Aucun championnat en cours pour le moment.</p>
+          </div>
+        </section>
+      </>
+    );
+  }
+
+  const done = championship.rallies.filter((r) => r.has_results);
+  const rallyId = isId(search.rallye) ? Number(search.rallye) : null;
+  if (rallyId !== null && !done.some((r) => r.id === rallyId)) notFound();
 
   return (
     <>
-      <Suspense>
-        <SectionTabs />
-      </Suspense>
-      <main>
-        <section className="panel">
-          <header className="panel-header">
-            <h1 className="panel-title">Classement général</h1>
-            {championship && seasons.length > 1 && (
-              <NavSelect
-                label="Saison"
-                value={`/classements?saison=${championship.id}`}
-                options={seasons.map((s) => ({ href: `/classements?saison=${s.id}`, label: s.name }))}
-              />
-            )}
-          </header>
+      <PageHeader title="Classements" subtitle="Classement général et résultats de chaque rallye.">
+        <nav className="head-tabs" aria-label="Classements">
+          <Link href={href(keep, {})} className={rallyId === null ? "active" : ""}>
+            Championnat
+          </Link>
+          {done.map((r) => (
+            <Link
+              key={r.id}
+              href={href(keep, { rallye: String(r.id) })}
+              className={rallyId === r.id ? "active" : ""}
+            >
+              {shortRallyName(r.name)}
+            </Link>
+          ))}
+        </nav>
+      </PageHeader>
 
-          {!championship || !standings ? (
-            <p className="panel-empty">Aucun championnat en cours pour le moment.</p>
-          ) : standings.standings.length === 0 ? (
-            <p className="panel-empty">Le classement sera publié après le premier rallye.</p>
+      <section className="band band-grey">
+        <div className="band-inner">
+          {rallyId === null ? (
+            <ChampionshipView championship={championship} search={search} keep={keep} />
           ) : (
-            <>
-              <p className="panel-meta">
-                {championship.name} ·{" "}
-                {standings.mode === "custom" ? "barème du championnat" : "points RaceNet"}
-              </p>
-              <div className="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Pos</th>
-                      <th>Pilote</th>
-                      <th className="num">Points</th>
-                      {standings.mode === "custom" &&
-                        standings.rallies.map((r, i) => (
-                          <th key={r.id} className="num desktop-only" title={r.name}>
-                            R{i + 1}
-                          </th>
-                        ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {standings.standings.map((row, i) => (
-                      <tr key={row.id ?? `d${row.driver_id}-${i}`} className={row.position <= 3 ? "podium" : ""}>
-                        <td className="pos">{row.position}</td>
-                        <td className="name">{row.name}</td>
-                        <td className="num total">{row.points}</td>
-                        {standings.mode === "custom" &&
-                          row.per_rally?.map((p, j) => (
-                            <td key={j} className="num muted desktop-only">
-                              {p ?? "–"}
-                            </td>
-                          ))}
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </>
+            <RallyView rallyId={rallyId} />
           )}
-        </section>
-      </main>
+        </div>
+      </section>
+    </>
+  );
+}
+
+async function ChampionshipView({
+  championship,
+  search,
+  keep,
+}: {
+  championship: Championship;
+  search: Search;
+  keep: Search;
+}) {
+  const apres = isId(search.apres) ? `?apres=${search.apres}` : "";
+  let standings: Standings;
+  try {
+    standings = await apiGet<Standings>(`/api/championships/${championship.id}/standings${apres}`);
+  } catch (e) {
+    if (e instanceof ApiError && e.status === 404) notFound();
+    throw e;
+  }
+  const seasons = await apiGet<ChampionshipListItem[]>("/api/championships");
+  const rows = standings.standings;
+  const leader = rows[0];
+  const after = standings.after;
+
+  return (
+    <>
+      <div className="view-bar">
+        <p className="view-label">
+          Classement général
+          {after ? ` · après la manche ${after.round}, ${after.name}` : ""}
+        </p>
+        <div className="view-filters">
+          {standings.snapshots.length > 1 && after && (
+            <NavSelect
+              label="Classement après la manche"
+              value={href(keep, { apres: String(after.id) })}
+              options={[...standings.snapshots]
+                .reverse()
+                .map((s) => ({ href: href(keep, { apres: String(s.id) }), label: `Après la manche ${s.round}` }))}
+            />
+          )}
+          {seasons.length > 1 && (
+            <NavSelect
+              label="Saison"
+              value={href({ saison: String(championship.id) }, {})}
+              options={seasons.map((s) => ({ href: href({ saison: String(s.id) }, {}), label: s.name }))}
+            />
+          )}
+        </div>
+      </div>
+
+      {rows.length === 0 ? (
+        <p className="card-block empty">Le classement sera publié après le premier rallye.</p>
+      ) : (
+        <>
+          <ol className="leader-cards">
+            {rows.slice(0, 3).map((s, i) => (
+              <li key={s.id ?? `${s.driver_id}-${i}`} className={i === 0 ? "first" : ""}>
+                <span className="leader-pos">{s.position}</span>
+                <span className="leader-body">
+                  <span className="leader-name">
+                    {s.driver_id !== null ? <Link href={`/pilotes/${s.driver_id}`}>{s.name}</Link> : s.name}
+                  </span>
+                  <strong>{s.points} pts</strong>
+                  <small>{i === 0 ? "Leader du championnat" : `à ${leader.points - s.points} pts du leader`}</small>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <StandingsTable
+            rows={rows}
+            gainedLabel={standings.previous && after ? `+ ${shortRallyName(after.name)}` : null}
+          />
+        </>
+      )}
+    </>
+  );
+}
+
+async function RallyView({ rallyId }: { rallyId: number }) {
+  const rally = await apiGet<RallyDetail>(`/api/rallies/${rallyId}`);
+  const podium = rally.results.slice(0, 3);
+
+  return (
+    <>
+      <div className="view-bar">
+        <p className="view-label">
+          Résultats · manche {rally.round} · {rally.name}
+        </p>
+      </div>
+
+      {rally.results.length === 0 ? (
+        <p className="card-block empty">Résultats pas encore publiés.</p>
+      ) : (
+        <>
+          <ol className="leader-cards">
+            {podium.map((r, i) => (
+              <li key={r.id} className={i === 0 ? "first" : ""}>
+                <span className="leader-pos">{r.position}</span>
+                <span className="leader-body">
+                  <span className="leader-name">
+                    {r.driver_id !== null ? <Link href={`/pilotes/${r.driver_id}`}>{r.name}</Link> : r.name}
+                  </span>
+                  <strong>{i === 0 ? formatTime(r.time) : formatDiff(r.diff)}</strong>
+                  <small>{r.vehicle}</small>
+                </span>
+              </li>
+            ))}
+          </ol>
+          <RallyTable
+            rows={rally.results}
+            title={shortRallyName(rally.name)}
+            showPoints={rally.championship.mode === "custom"}
+          />
+        </>
+      )}
     </>
   );
 }

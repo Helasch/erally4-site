@@ -75,6 +75,11 @@ export default async function PublicLayout({ children }: { children: ReactNode }
               </a>
             )}
             <Link href="/pilotes">Pilotes</Link>
+            {discordUrl && (
+              <a href={discordUrl} target="_blank" rel="noopener noreferrer">
+                Contact
+              </a>
+            )}
           </nav>
         </div>
         <p className="footer-legal">
