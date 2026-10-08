@@ -44,6 +44,19 @@ pilote correspondant, avec des suggestions :
 
 Les pseudos restent modifiables ensuite (page du rallye, classement importé, page Pilotes avec fusion).
 
+## Comptes pilotes
+
+Connexion avec Discord (aucun mot de passe stocké), réservée aux membres du serveur Discord si son
+identifiant est renseigné. Le pilote choisit un pseudo pour le site, indique son pseudo RaceNet, sa voiture
+et une photo (réencodée en WebP 512×512 par le serveur, métadonnées supprimées, stockée dans `/data/uploads/avatars`).
+
+- Pseudo RaceNet trouvé dans les résultats et libre → compte relié automatiquement ; sinon la demande
+  apparaît dans l'admin (page **Comptes pilotes**), avec des suggestions. Les comptes en attente sont aussi
+  reliés automatiquement quand leur pseudo apparaît dans un nouvel import.
+- Une fois relié, le pseudo du site remplace le pseudo RaceNet dans les classements.
+- Réglages Discord (Client ID, Client Secret, identifiant du serveur) : admin → **Paramètres**, qui affiche
+  aussi l'adresse de retour à déclarer dans l'application Discord.
+
 ## Dev local
 
 Prérequis : Docker et Node.js.

@@ -6,6 +6,7 @@ from app.db import get_db
 from app.models import Championship, Driver, Rally
 from app.services import (
     championship_standings,
+    display_name,
     driver_profile,
     drivers_overview,
     get_championship,
@@ -36,7 +37,7 @@ def _rally_summary(rally: Rally, index: int) -> dict:
         "has_results": winner is not None,
         "result_count": len(rally.results),
         "winner": (
-            {"name": winner.driver.name if winner.driver else winner.raw_name, "platform": winner.platform}
+            {"name": display_name(winner.driver, winner.raw_name), "platform": winner.platform}
             if winner
             else None
         ),
@@ -81,7 +82,7 @@ def home(db: Session = Depends(get_db)):
 
 @router.get("/settings")
 def public_settings(db: Session = Depends(get_db)):
-    return read_settings(db)
+    return read_settings(db, public_only=True)
 
 
 @router.get("/championship/current")

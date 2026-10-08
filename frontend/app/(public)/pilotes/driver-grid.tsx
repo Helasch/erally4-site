@@ -24,7 +24,7 @@ export default function DriverGrid({ drivers }: { drivers: DriverListItem[] }) {
           {shown.map((d) => (
             <li key={d.id}>
               <Link href={`/pilotes/${d.id}`} className="driver-card">
-                <Avatar name={d.name} size={52} />
+                <Avatar name={d.name} url={d.avatar_url} size={52} />
                 <span className="driver-card-body">
                   <span className="driver-card-name">{d.name}</span>
                   <small>{[d.platform, d.vehicle].filter(Boolean).join(" · ") || "—"}</small>

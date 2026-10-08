@@ -18,6 +18,9 @@ const icons: Record<string, ReactNode> = {
   external: <path d="M11 3h6v6M17 3l-8 8M14 12v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h4" />,
   logout: <path d="M8 17H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h4M13 14l4-4-4-4M17 10H8" />,
   menu: <path d="M3 5h14M3 10h14M3 15h14" />,
+  account: (
+    <path d="M10 10a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7zM3.5 17.5a6.5 6.5 0 0 1 13 0M15 4.5l1.5 1.5 2.5-3" />
+  ),
   settings: (
     <path d="M10 12.5a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5zM16 10l1.5-1-1.5-3-1.8.4a6 6 0 0 0-1.4-.8L12.5 4h-3l-.3 1.6a6 6 0 0 0-1.4.8L6 6 4.5 9 6 10l-1.5 1L6 14l1.8-.4a6 6 0 0 0 1.4.8L9.5 16h3l.3-1.6a6 6 0 0 0 1.4-.8L16 14l1.5-3z" />
   ),
@@ -47,6 +50,7 @@ const NAV = [
   { href: "/admin/championnats", label: "Championnats", icon: "trophy", match: ["/admin/championnats", "/admin/rallyes", "/admin/classement"] },
   { href: "/admin/import", label: "Importer un CSV", icon: "upload" },
   { href: "/admin/pilotes", label: "Pilotes", icon: "users" },
+  { href: "/admin/comptes", label: "Comptes pilotes", icon: "account" },
   { href: "/admin/parametres", label: "Paramètres", icon: "settings" },
 ] as const;
 

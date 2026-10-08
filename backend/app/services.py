@@ -1,5 +1,6 @@
 """Logique métier qui s'appuie sur la base : classements, aperçu et enregistrement des imports."""
 
+import difflib
 import os
 import re
 import secrets
@@ -11,9 +12,20 @@ from fastapi import HTTPException, status
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
+from app.accounts import DEFAULT_VEHICLES, AccountError, clean_racenet_name, clean_site_name, decide_link
+from app.avatars import avatar_url, delete_avatar
 from app.config import settings
 from app.csv_import import ANONYMOUS_NAME, ChampionshipRow, ParsedCsv, RallyRow, format_time_ms
-from app.models import Championship, Driver, Import, RacenetStanding, Rally, RallyResult, SiteSetting
+from app.models import (
+    Championship,
+    Driver,
+    Import,
+    PilotAccount,
+    RacenetStanding,
+    Rally,
+    RallyResult,
+    SiteSetting,
+)
 from app.scoring import (
     ChampionshipCandidate,
     Finish,
@@ -74,7 +86,12 @@ def get_or_create_driver(db: Session, name: str) -> Driver:
 
 
 def display_name(driver: Driver | None, raw_name: str) -> str:
-    return driver.name if driver else raw_name
+    """Pseudo public : celui du compte pilote relié s'il en a choisi un, sinon le pseudo RaceNet."""
+    if driver is None:
+        return raw_name
+    if driver.account is not None and driver.account.site_name:
+        return driver.account.site_name
+    return driver.name
 
 
 # --- Classements ----------------------------------------------------------------
@@ -126,7 +143,11 @@ def standings_snapshots(db: Session, championship: Championship) -> list[Snapsho
     if championship.scoring_mode == "custom":
         scoring = scoring_table(championship)
         finishes = [
-            [RallyFinish(r.driver_id, r.driver.name, r.position) for r in rally.results if r.driver_id is not None]
+            [
+                RallyFinish(r.driver_id, display_name(r.driver, r.raw_name), r.position)
+                for r in rally.results
+                if r.driver_id is not None
+            ]
             for rally in rallies
         ]
         snapshots = []
@@ -494,6 +515,8 @@ def commit_import(
     )
     db.add(record)
     db.commit()
+    # Les comptes en attente dont le pseudo RaceNet vient d'apparaître sont reliés automatiquement
+    link_pending_accounts(db)
     db.expire_all()
     return record
 
@@ -501,32 +524,72 @@ def commit_import(
 # --- Paramètres du site ------------------------------------------------------------
 
 _DISCORD_INVITE = re.compile(r"^https://(discord\.gg|discord\.com/invite)/[A-Za-z0-9-]{2,64}/?$")
+_SNOWFLAKE = re.compile(r"^\d{15,25}$")  # identifiants Discord (application, serveur)
+_SECRET = re.compile(r"^[A-Za-z0-9_\-]{16,128}$")
+_SITE_URL = re.compile(r"^https?://[A-Za-z0-9.\-]+(:\d{1,5})?$")
 
-# Réglages connus, avec leur valeur par défaut et leur validation
+
+@dataclass(frozen=True)
+class SettingDef:
+    valid: object  # fonction str -> bool (la chaîne vide est toujours acceptée)
+    message: str
+    public: bool = False  # lisible par tous (GET /api/settings)
+    secret: bool = False  # jamais renvoyé, même à l'admin
+
+
 SETTINGS = {
-    "discord_url": ("", lambda v: v == "" or bool(_DISCORD_INVITE.match(v)), "Lien d'invitation Discord invalide "
-                    "(attendu : https://discord.gg/… ou https://discord.com/invite/…)."),
+    "discord_url": SettingDef(
+        lambda v: bool(_DISCORD_INVITE.match(v)),
+        "Lien d'invitation Discord invalide (attendu : https://discord.gg/… ou https://discord.com/invite/…).",
+        public=True,
+    ),
+    "discord_client_id": SettingDef(lambda v: bool(_SNOWFLAKE.match(v)), "Client ID Discord invalide (chiffres)."),
+    "discord_client_secret": SettingDef(
+        lambda v: bool(_SECRET.match(v)), "Client Secret Discord invalide.", secret=True
+    ),
+    "discord_guild_id": SettingDef(
+        lambda v: bool(_SNOWFLAKE.match(v)), "Identifiant de serveur Discord invalide (chiffres)."
+    ),
+    "site_url": SettingDef(
+        lambda v: bool(_SITE_URL.match(v)), "Adresse du site invalide (ex. https://erally4.devnest.fr, sans / final)."
+    ),
 }
 
 
-def read_settings(db: Session) -> dict:
-    stored = {s.key: s.value for s in db.scalars(select(SiteSetting).where(SiteSetting.key.in_(SETTINGS)))}
-    return {key: stored.get(key, default) for key, (default, _, _) in SETTINGS.items()}
+def _stored_settings(db: Session) -> dict[str, str]:
+    return {s.key: s.value for s in db.scalars(select(SiteSetting).where(SiteSetting.key.in_(SETTINGS)))}
+
+
+def setting(db: Session, key: str) -> str:
+    return _stored_settings(db).get(key, "")
+
+
+def read_settings(db: Session, public_only: bool = False) -> dict:
+    stored = _stored_settings(db)
+    values = {}
+    for key, definition in SETTINGS.items():
+        if public_only and not definition.public:
+            continue
+        if definition.secret:
+            values[f"{key}_set"] = bool(stored.get(key))
+        else:
+            values[key] = stored.get(key, "")
+    return values
 
 
 def write_settings(db: Session, values: dict) -> dict:
     for key, value in values.items():
-        if key not in SETTINGS:
-            continue
-        _, valid, message = SETTINGS[key]
-        value = (value or "").strip()
-        if not valid(value):
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, message)
-        setting = db.get(SiteSetting, key)
-        if setting is None:
+        definition = SETTINGS.get(key)
+        if definition is None or value is None:
+            continue  # None = ne pas modifier (utile pour le secret, jamais réaffiché)
+        value = value.strip()
+        if value and not definition.valid(value):
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, definition.message)
+        row = db.get(SiteSetting, key)
+        if row is None:
             db.add(SiteSetting(key=key, value=value))
         else:
-            setting.value = value
+            row.value = value
     db.commit()
     return read_settings(db)
 
@@ -563,7 +626,8 @@ def drivers_overview(db: Session, championship: Championship) -> list[dict]:
         rows.append(
             {
                 "id": driver_id,
-                "name": driver.name,
+                "name": display_name(driver, driver.name),
+                "avatar_url": avatar_url(driver.account.avatar_file) if driver.account else None,
                 "position": standing["position"] if standing else None,
                 "points": standing["points"] if standing else None,
                 "rallies": stats.rallies,
@@ -571,7 +635,8 @@ def drivers_overview(db: Session, championship: Championship) -> list[dict]:
                 "podiums": stats.podiums,
                 "best": stats.best,
                 "platform": _most_common([r.platform for _, _, r in mine]),
-                "vehicle": _most_common([r.vehicle for _, _, r in mine]),
+                "vehicle": (driver.account.vehicle if driver.account and driver.account.vehicle else None)
+                or _most_common([r.vehicle for _, _, r in mine]),
             }
         )
     rows.sort(key=lambda r: (r["position"] is None, r["position"] or 0, r["name"].lower()))
@@ -637,11 +702,161 @@ def driver_profile(db: Session, driver: Driver, championship: Championship | Non
         }
 
     all_results = [r for r, _ in career_rows]
+    account = driver.account
     return {
         "id": driver.id,
-        "name": driver.name,
+        "name": display_name(driver, driver.name),
+        # Pseudo RaceNet affiché en complément quand le pilote a choisi un autre pseudo pour le site
+        "racenet_name": driver.name if account and account.site_name and account.site_name != driver.name else None,
+        "avatar_url": avatar_url(account.avatar_file) if account else None,
+        "has_account": account is not None,
         "platform": _most_common([r.platform for r in all_results]),
-        "vehicle": _most_common([r.vehicle for r in all_results]),
+        "vehicle": (account.vehicle if account and account.vehicle else None)
+        or _most_common([r.vehicle for r in all_results]),
         "career": career.__dict__,
         "season": season,
     }
+
+
+# --- Comptes pilotes -------------------------------------------------------------------
+
+
+def site_base_url(db: Session, request) -> str:
+    """Adresse publique du site (réglage « site_url », sinon déduite des en-têtes du proxy)."""
+    configured = setting(db, "site_url")
+    if configured:
+        return configured.rstrip("/")
+    proto = request.headers.get("x-forwarded-proto", request.url.scheme).split(",")[0].strip()
+    host = (request.headers.get("x-forwarded-host") or request.headers.get("host") or "").split(",")[0].strip()
+    return f"{proto}://{host}"
+
+
+def discord_redirect_uri(db: Session, request) -> str:
+    return f"{site_base_url(db, request)}/api/auth/discord/callback"
+
+
+def get_or_create_account(db: Session, discord_id: str, discord_username: str) -> PilotAccount:
+    account = db.scalar(select(PilotAccount).where(PilotAccount.discord_id == discord_id))
+    if account is None:
+        account = PilotAccount(discord_id=discord_id, discord_username=discord_username)
+        db.add(account)
+    else:
+        account.discord_username = discord_username
+    db.commit()
+    return account
+
+
+def apply_link(db: Session, account: PilotAccount) -> None:
+    """Relie le compte au pilote dont le nom RaceNet correspond, s'il est libre ; sinon demande à l'admin."""
+    driver = (
+        db.scalar(select(Driver).where(Driver.name == account.racenet_name)) if account.racenet_name else None
+    )
+    taken = (
+        driver is not None
+        and db.scalar(
+            select(PilotAccount.id).where(PilotAccount.driver_id == driver.id, PilotAccount.id != account.id)
+        )
+        is not None
+    )
+    decision = decide_link(account.racenet_name, driver.id if driver else None, taken)
+    account.link_status = decision.status
+    account.driver_id = decision.driver_id
+
+
+def link_pending_accounts(db: Session) -> int:
+    """Après un import : relie les comptes en attente dont le pseudo RaceNet vient d'apparaître."""
+    linked = 0
+    for account in db.scalars(select(PilotAccount).where(PilotAccount.link_status == "pending")):
+        apply_link(db, account)
+        linked += account.link_status == "linked"
+    db.commit()
+    return linked
+
+
+def update_account(db: Session, account: PilotAccount, values: dict) -> PilotAccount:
+    try:
+        if "site_name" in values:
+            name = clean_site_name(values["site_name"] or "")
+            taken = db.scalar(
+                select(PilotAccount.id).where(PilotAccount.site_name == name, PilotAccount.id != account.id)
+            )
+            if taken is not None:
+                raise AccountError("Ce pseudo est déjà utilisé par un autre pilote.")
+            account.site_name = name
+        if "racenet_name" in values:
+            racenet = clean_racenet_name(values["racenet_name"] or "")
+            if racenet != account.racenet_name or account.link_status == "none":
+                account.racenet_name = racenet
+                apply_link(db, account)
+        if "vehicle" in values:
+            vehicle = (values["vehicle"] or "").strip() or None
+            if vehicle is not None and vehicle not in vehicle_choices(db):
+                raise AccountError("Choisissez une voiture dans la liste.")
+            account.vehicle = vehicle
+    except AccountError as exc:
+        db.rollback()
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, str(exc)) from None
+    db.commit()
+    return account
+
+
+def vehicle_choices(db: Session) -> list[str]:
+    seen = {v for v in db.scalars(select(RallyResult.vehicle).distinct()) if v}
+    return sorted(seen | set(DEFAULT_VEHICLES))
+
+
+def account_payload(account: PilotAccount) -> dict:
+    return {
+        "id": account.id,
+        "discord_username": account.discord_username,
+        "site_name": account.site_name,
+        "racenet_name": account.racenet_name,
+        "link_status": account.link_status,
+        "driver_id": account.driver_id,
+        "vehicle": account.vehicle,
+        "avatar_url": avatar_url(account.avatar_file),
+    }
+
+
+def delete_account(db: Session, account: PilotAccount) -> None:
+    delete_avatar(account.avatar_file)
+    db.delete(account)
+    db.commit()
+
+
+def admin_accounts(db: Session) -> list[dict]:
+    """Comptes pour l'admin, avec des suggestions de liaison pour ceux en attente."""
+    accounts = db.scalars(select(PilotAccount).order_by(PilotAccount.link_status.desc(), PilotAccount.id)).all()
+    linked_ids = {a.driver_id for a in accounts if a.driver_id}
+    free_drivers = [d for d in db.scalars(select(Driver)) if d.id not in linked_ids]
+    names = {d.name.lower(): d for d in free_drivers}
+    rows = []
+    for a in accounts:
+        suggestions = []
+        if a.link_status == "pending" and a.racenet_name:
+            close = difflib.get_close_matches(a.racenet_name.lower(), list(names), n=3, cutoff=0.5)
+            suggestions = [{"id": names[n].id, "name": names[n].name} for n in close]
+        rows.append(
+            {
+                **account_payload(a),
+                "driver_name": a.driver.name if a.driver else None,
+                "created_at": a.created_at,
+                "suggestions": suggestions,
+            }
+        )
+    return rows
+
+
+def admin_link(db: Session, account: PilotAccount, driver_id: int) -> None:
+    driver = db.get(Driver, driver_id)
+    if driver is None:
+        raise not_found("Pilote")
+    other = db.scalar(select(PilotAccount).where(PilotAccount.driver_id == driver.id, PilotAccount.id != account.id))
+    if other is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"« {driver.name} » est déjà relié au compte de {other.site_name or other.discord_username}.",
+        )
+    account.driver_id = driver.id
+    account.link_status = "linked"
+    db.commit()

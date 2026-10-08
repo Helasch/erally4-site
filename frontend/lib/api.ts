@@ -162,6 +162,7 @@ export type Home = {
 export type DriverListItem = {
   id: number;
   name: string;
+  avatar_url: string | null;
   position: number | null;
   points: number | null;
   rallies: number;
@@ -185,6 +186,9 @@ export type DriverStats = {
 export type DriverProfile = {
   id: number;
   name: string;
+  racenet_name: string | null;
+  avatar_url: string | null;
+  has_account: boolean;
   platform: string | null;
   vehicle: string | null;
   career: DriverStats;
