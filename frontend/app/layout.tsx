@@ -1,4 +1,19 @@
 import type { ReactNode } from "react";
+import { Barlow, Barlow_Condensed } from "next/font/google";
+import "./globals.css";
+
+const display = Barlow_Condensed({
+  subsets: ["latin"],
+  weight: ["600", "700", "800", "900"],
+  style: ["normal", "italic"],
+  variable: "--font-display",
+});
+
+const body = Barlow({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-body",
+});
 
 export const metadata = {
   title: "eRally4 Cup",
@@ -7,10 +22,8 @@ export const metadata = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="fr">
-      <body style={{ fontFamily: "system-ui, sans-serif", margin: 0, padding: 16 }}>
-        {children}
-      </body>
+    <html lang="fr" className={`${display.variable} ${body.variable}`}>
+      <body>{children}</body>
     </html>
   );
 }

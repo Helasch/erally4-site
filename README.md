@@ -1,6 +1,10 @@
 # eRally4 Cup — site web
 
-Site du championnat de rallye virtuel **eRally4 Cup** (EA Sports WRC, 6 manches).
+Site du championnat de rallye virtuel **eRally4 Cup** (EA Sports WRC).
+
+- **Public** : classement général du championnat en cours et classement de chaque rallye.
+- **Admin** (`/admin`) : championnats, rallyes, barème, import des CSV RaceNet, correction des pseudos
+  « WRC Player ».
 
 ## Architecture
 
@@ -10,27 +14,84 @@ Traefik ──► web (Next.js, :3000) ──/api/*, /health──► api (FastA
 ```
 
 - `frontend/` : Next.js + React (seul service exposé via Traefik).
-- `backend/` : FastAPI (non exposé, accessible uniquement via le réseau interne).
+- `backend/` : FastAPI + SQLAlchemy, migrations Alembic appliquées au démarrage.
+
+## Classements
+
+Chaque championnat a un mode, modifiable dans l'admin :
+
+| Mode | Classement général | Classement d'un rallye |
+|---|---|---|
+| **RaceNet** | dernier CSV « championship » importé, points RaceNet tels quels | CSV « event » du rallye, au temps |
+| **Personnalisé** | calculé depuis les rallyes avec le barème défini (points par place) ; égalités départagées au nombre de victoires, puis de 2es places, etc. | idem, avec les points du barème |
+
+### Formats CSV (exports RaceNet)
+
+Le type est détecté depuis l'en-tête :
+
+- rallye : `Rank,DisplayName,Vehicle,Time,DifferenceToFirst,Platform`
+- championnat : `Rank,DisplayName,PointsAccumulated`
+
+Les fichiers bruts sont conservés dans le volume `/data/uploads`.
+
+### « WRC Player »
+
+RaceNet masque le pseudo de certains joueurs. À l'import, ces lignes sont surlignées et l'admin choisit le
+pilote correspondant, avec des suggestions :
+
+- rallye : pilotes déjà vus sur la même plateforme (et la même voiture), absents du fichier ;
+- championnat : pilotes absents du fichier dont les points précédents sont cohérents.
+
+Les pseudos restent modifiables ensuite (page du rallye, classement importé, page Pilotes avec fusion).
 
 ## Dev local
 
-Prérequis : Docker.
+Prérequis : Docker et Node.js.
 
 ```bash
-docker compose -f docker-compose.dev.yml up --build
+docker compose -f docker-compose.dev.yml up -d --build db api
+cd frontend && npm install && npm run dev
 ```
 
-- Site : http://localhost:3000
-- API : http://localhost:8000/health
+- Site : http://localhost:3000 — admin : http://localhost:3000/admin
+- Page de diagnostic (dev uniquement) : http://localhost:3000/test
+
+Créer un admin local :
+
+```bash
+docker compose -f docker-compose.dev.yml exec api python -m app.cli create-admin
+```
+
+Tests du backend :
+
+```bash
+docker build --target test ./backend
+```
+
+## Administration en production
+
+```bash
+docker exec -it erally4-api python -m app.cli create-admin
+docker exec -it erally4-api python -m app.cli reset-password <identifiant>
+```
+
+Mot de passe : 12 caractères minimum. Après 5 échecs de connexion, le compte est verrouillé 15 minutes.
+
+## Workflow Git
+
+- `main` = production : on ne commite pas directement dessus.
+- Chaque évolution se fait sur une branche (`feature/…`, `fix/…`), puis une **Pull Request** vers `main`.
+- Sur la PR, la CI lance les tests (pytest, TypeScript) et vérifie que les images se construisent,
+  sans rien publier. On fusionne quand tout est vert.
+
+```bash
+git switch main && git pull
+git switch -c feature/ma-fonctionnalite
+# … commits …
+git push -u origin feature/ma-fonctionnalite
+```
 
 ## Déploiement
 
-Chaque push sur `main` déclenche `.github/workflows/deploy.yml` :
-
-1. build des images `web` et `api` (amd64 + arm64) et publication sur GHCR :
-   `ghcr.io/helasch/erally4-web` et `ghcr.io/helasch/erally4-api` (tags `latest` et SHA du commit) ;
-2. connexion SSH au serveur, `git clone`/mise à jour du dépôt dans le dossier du projet ;
-3. écriture du `.env` depuis les secrets GitHub ;
-4. `docker compose pull` puis `docker compose up -d --remove-orphans`.
-
-Mise en place initiale : voir [DEPLOY.md](DEPLOY.md).
+Chaque push sur `main` (donc chaque PR fusionnée) construit et publie les images `ghcr.io/helasch/erally4-web` et
+`ghcr.io/helasch/erally4-api` (tags `latest` et SHA du commit). Mise en production : voir [DEPLOY.md](DEPLOY.md).
