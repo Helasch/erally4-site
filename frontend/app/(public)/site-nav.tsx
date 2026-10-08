@@ -4,7 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { fetchMe, loginUrl, pilotApi, type PilotAccount } from "@/lib/pilot-api";
+import { fetchMe, pilotApi, type PilotAccount } from "@/lib/pilot-api";
 import Avatar from "./avatar";
 
 const LINKS = [
@@ -93,9 +93,9 @@ export default function SiteNav({ discordUrl }: { discordUrl: string }) {
             );
           })}
           {me === null && (
-            <a href={loginUrl(pathname)} className="nav-mobile-extra">
+            <Link href={`/connexion?next=${encodeURIComponent(pathname)}`} className="nav-mobile-extra">
               Se connecter
-            </a>
+            </Link>
           )}
           {me && (
             <>
@@ -121,9 +121,9 @@ export default function SiteNav({ discordUrl }: { discordUrl: string }) {
             </a>
           )}
           {me === null && (
-            <a href={loginUrl(pathname)} className="nav-login">
+            <Link href={`/connexion?next=${encodeURIComponent(pathname)}`} className="nav-login">
               Se connecter
-            </a>
+            </Link>
           )}
           {me && <AccountMenu me={me} onLogout={logout} />}
         </div>

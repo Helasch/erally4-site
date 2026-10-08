@@ -139,7 +139,9 @@
   background: #f3e6e6;
 }
 
-.site .nav-cta-mobile,
+/* Liens réservés au menu mobile : masqués sur ordinateur (réaffichés dans la media query mobile) */
+.site .nav-links .nav-cta-mobile,
+.site .nav-links .nav-mobile-extra,
 .site .nav-burger {
   display: none;
 }
@@ -1776,10 +1778,6 @@
 
 .site .nav-login:hover {
   border-bottom-color: #fff;
-}
-
-.site .nav-mobile-extra {
-  display: none;
 }
 
 .site .account-menu {

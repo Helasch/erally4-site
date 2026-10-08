@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { fetchMe, loginUrl, pilotApi, PilotApiError, type PilotAccount } from "@/lib/pilot-api";
+import { fetchMe, pilotApi, PilotApiError, type PilotAccount } from "@/lib/pilot-api";
 import Avatar from "../avatar";
 import PageHeader from "../page-header";
 
@@ -30,7 +30,7 @@ export default function MonComptePage() {
     fetchMe()
       .then((account) => {
         if (!account) {
-          window.location.href = loginUrl("/mon-compte");
+          router.replace("/connexion?next=/mon-compte");
           return;
         }
         setMe(account);
