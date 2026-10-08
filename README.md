@@ -77,7 +77,21 @@ docker exec -it erally4-api python -m app.cli reset-password <identifiant>
 
 Mot de passe : 12 caractères minimum. Après 5 échecs de connexion, le compte est verrouillé 15 minutes.
 
+## Workflow Git
+
+- `main` = production : on ne commite pas directement dessus.
+- Chaque évolution se fait sur une branche (`feature/…`, `fix/…`), puis une **Pull Request** vers `main`.
+- Sur la PR, la CI lance les tests (pytest, TypeScript) et vérifie que les images se construisent,
+  sans rien publier. On fusionne quand tout est vert.
+
+```bash
+git switch main && git pull
+git switch -c feature/ma-fonctionnalite
+# … commits …
+git push -u origin feature/ma-fonctionnalite
+```
+
 ## Déploiement
 
-Chaque push sur `main` construit et publie les images `ghcr.io/helasch/erally4-web` et
+Chaque push sur `main` (donc chaque PR fusionnée) construit et publie les images `ghcr.io/helasch/erally4-web` et
 `ghcr.io/helasch/erally4-api` (tags `latest` et SHA du commit). Mise en production : voir [DEPLOY.md](DEPLOY.md).
