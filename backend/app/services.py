@@ -423,20 +423,26 @@ def stage_summary(stage: Stage) -> dict:
 
 
 def stage_results_payload(stage: Stage) -> list[dict]:
-    return [
-        {
-            "id": r.id,
-            "position": r.position,
-            **_stage_driver(r),
-            "vehicle": r.vehicle,
-            "platform": r.platform,
-            "time": format_time_ms(r.time_ms),
-            "diff": format_time_ms(r.diff_ms) if r.position > 1 else None,
-            "penalty_s": round((r.penalty_ms or 0) / 1000, 3),
-            "abandoned": stage_abandoned(r),
-        }
-        for r in stage.results
-    ]
+    payload = []
+    previous: StageResult | None = None
+    for r in stage.results:
+        payload.append(
+            {
+                "id": r.id,
+                "position": r.position,
+                **_stage_driver(r),
+                "vehicle": r.vehicle,
+                "platform": r.platform,
+                "time": format_time_ms(r.time_ms),
+                "diff": format_time_ms(r.diff_ms) if r.position > 1 else None,
+                # Écart avec le pilote classé juste devant
+                "diff_prev": format_time_ms(r.diff_ms - previous.diff_ms) if previous is not None else None,
+                "penalty_s": round((r.penalty_ms or 0) / 1000, 3),
+                "abandoned": stage_abandoned(r),
+            }
+        )
+        previous = r
+    return payload
 
 
 def stage_splits(rally: Rally) -> dict[tuple, list[dict]]:

@@ -121,6 +121,7 @@ export type StageResultRow = {
   platform: string;
   time: string;
   diff: string | null;
+  diff_prev: string | null;
   penalty_s: number;
   abandoned: boolean;
 };

@@ -202,17 +202,11 @@ export function RallyTable({
     >
       {expandable && <p className="table-hint">Touchez un pilote pour voir son classement sur chaque spéciale.</p>}
       <div className="table-scroll">
-        <table className={`rank-table rank-table-lg${expandable ? " expandable" : ""}`}>
+        <table className={`rank-table rank-table-lg fixed-cols${expandable ? " expandable" : ""}`}>
           <thead>
             <tr>
-              <th>Pos</th>
-              <th>Pilote</th>
-              <th className="hide-sm">Voiture</th>
-              <th className="r hide-sm">Temps</th>
-              <th className="r hide-md">Écart préc.</th>
-              <th className="r hide-sm">Écart</th>
-              <th className="r only-sm">Temps / écart</th>
-              {showPoints && <th className="r">Pts</th>}
+              <ResultColumns />
+              {showPoints && <th className="r col-pts">Pts</th>}
               <th className="toggle-col">
                 <span className="visually-hidden">Détail des spéciales</span>
               </th>
@@ -234,7 +228,9 @@ export function RallyTable({
                         <DriverName name={r.name} id={r.driver_id} />
                         <span className="platform">{r.platform}</span>
                       </span>
-                      <small className="show-sm">{r.vehicle}</small>
+                      <small className="show-sm">
+                        {r.platform} · {r.vehicle.replace(/ Rally4$/, "")}
+                      </small>
                     </td>
                     <td className="hide-sm muted-cell">{r.vehicle}</td>
                     {r.disqualified ? (
@@ -336,15 +332,11 @@ export function StageTable({ rows, title }: { rows: StageResultRow[]; title: str
       footer={<ShowAll total={rows.length} all={f.all} setAll={f.setAll} searching={f.searching} found={f.filtered.length} />}
     >
       <div className="table-scroll">
-        <table className="rank-table rank-table-lg">
+        <table className="rank-table rank-table-lg fixed-cols">
           <thead>
             <tr>
-              <th>Pos</th>
-              <th>Pilote</th>
-              <th className="hide-sm">Voiture</th>
-              <th className="r hide-sm">Temps</th>
-              <th className="r hide-sm">Écart</th>
-              <th className="r only-sm">Temps / écart</th>
+              <ResultColumns />
+              <th className="toggle-col" aria-hidden="true" />
             </tr>
           </thead>
           <tbody>
@@ -356,11 +348,13 @@ export function StageTable({ rows, title }: { rows: StageResultRow[]; title: str
                     <DriverName name={r.name} id={r.driver_id} />
                     <span className="platform">{r.platform}</span>
                   </span>
-                  <small className="show-sm">{r.vehicle}</small>
+                  <small className="show-sm">
+                        {r.platform} · {r.vehicle.replace(/ Rally4$/, "")}
+                      </small>
                 </td>
                 <td className="hide-sm muted-cell">{r.vehicle}</td>
                 {r.abandoned ? (
-                  <td className="r time muted-cell hide-sm" colSpan={2} title={MAX_TIME}>
+                  <td className="r time muted-cell hide-sm" colSpan={3} title={MAX_TIME}>
                     Temps max · {formatTime(r.time)}
                   </td>
                 ) : (
@@ -369,6 +363,7 @@ export function StageTable({ rows, title }: { rows: StageResultRow[]; title: str
                       {formatTime(r.time)}
                       <PenaltyMark penalty={r.penalty_s} reason={RACENET_PENALTY} />
                     </td>
+                    <td className="r time muted-cell hide-md">{r.diff_prev ? formatDiff(r.diff_prev) : "—"}</td>
                     <td className="r time hide-sm">{r.diff ? formatDiff(r.diff) : "—"}</td>
                   </>
                 )}
@@ -376,6 +371,7 @@ export function StageTable({ rows, title }: { rows: StageResultRow[]; title: str
                   {r.abandoned ? "Temps max" : r.position === 1 ? formatTime(r.time) : r.diff ? formatDiff(r.diff) : "—"}
                   {!r.abandoned && <PenaltyMark penalty={r.penalty_s} reason={RACENET_PENALTY} />}
                 </td>
+                <td className="toggle-col" />
               </tr>
             ))}
           </tbody>
@@ -388,10 +384,26 @@ export function StageTable({ rows, title }: { rows: StageResultRow[]; title: str
 /** Pénalité de temps affichée à côté du temps (motif au survol). */
 function PenaltyMark({ penalty, reason }: { penalty: number; reason: string | null }) {
   if (!penalty) return null;
+  const seconds = penalty.toLocaleString("fr-FR");
   return (
-    <span className="penalty-mark" title={reason ?? "Pénalité"}>
-      dont +{penalty.toLocaleString("fr-FR")} s
+    <span className="penalty-mark" title={`Dont ${seconds} s de pénalité${reason ? ` · ${reason}` : ""}`}>
+      +{seconds} s
     </span>
+  );
+}
+
+/** Colonnes communes au classement d'un rallye et d'une spéciale (largeurs fixes : les tableaux restent identiques). */
+function ResultColumns() {
+  return (
+    <>
+      <th className="col-pos">Pos</th>
+      <th className="col-driver">Pilote</th>
+      <th className="col-car hide-sm">Voiture</th>
+      <th className="col-time r hide-sm">Temps</th>
+      <th className="col-gap r hide-md">Écart préc.</th>
+      <th className="col-gap r hide-sm">Écart</th>
+      <th className="col-mobile r only-sm">Temps / écart</th>
+    </>
   );
 }
 

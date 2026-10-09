@@ -2844,3 +2844,99 @@
     min-width: 64px;
   }
 }
+
+/* Classements d'un rallye et des spéciales : colonnes de largeur fixe, pour que tous
+   les tableaux soient identiques quel que soit leur contenu (pénalités, pseudos longs…) */
+.site .rank-table.fixed-cols {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.site .fixed-cols .col-pos {
+  width: 64px;
+}
+
+.site .fixed-cols .col-car {
+  width: 22%;
+}
+
+.site .fixed-cols .col-time {
+  width: 15%;
+}
+
+.site .fixed-cols .col-gap {
+  width: 13%;
+}
+
+.site .fixed-cols .col-pts {
+  width: 64px;
+}
+
+.site .fixed-cols .col-mobile {
+  width: 128px;
+}
+
+.site .fixed-cols td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site .fixed-cols td.time {
+  white-space: nowrap;
+}
+
+/* Pénalité sur la même ligne que le temps : la hauteur des lignes ne change pas */
+.site .fixed-cols .penalty-mark {
+  display: inline;
+  margin-left: 6px;
+}
+
+@media (max-width: 860px) {
+  .site .fixed-cols .col-pos {
+    width: 40px;
+  }
+
+  .site .fixed-cols .toggle-col {
+    width: 30px;
+  }
+}
+
+/* Le bouton ▾ ne doit pas agrandir la ligne (même hauteur que sur les spéciales) */
+.site .fixed-cols .row-toggle {
+  margin: -6px 0;
+  vertical-align: middle;
+}
+
+/* Mobile : une hauteur de ligne constante (pseudo sur une ligne, plateforme et voiture dessous) */
+@media (max-width: 860px) {
+  .site .rank-table.fixed-cols td:nth-child(2) {
+    white-space: nowrap;
+  }
+
+  .site .fixed-cols .driver-cell {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .site .fixed-cols .driver-cell .platform {
+    display: none;
+  }
+
+  .site .fixed-cols .show-sm {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .site .fixed-cols .col-mobile {
+    width: 118px;
+  }
+}
+
+.site .fixed-cols td.toggle-col {
+  overflow: visible;
+  padding-left: 0;
+  padding-right: 0;
+  text-align: center;
+}
