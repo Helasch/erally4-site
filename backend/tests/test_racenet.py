@@ -168,3 +168,23 @@ def test_strip_identities_replaces_ssid():
     assert first["ssid"] == player_key("a")
     assert "wrcPlayerId" not in first
     assert stripped["event_id"] == "EV1"
+
+
+def test_missing_stage_time_is_reconstructed_from_total():
+    data = payload()
+    # Bob est classé au général mais absent du classement de l'ES2
+    data["stages"][1]["entries"] = [entry("a", "Alice", 1, "00:10:05")]
+    event = parse_event(data)
+    es2 = event.stages[1]
+    bob = next((e, pos) for e, pos, _ in es2.entries if e.name == "Bob")
+    # 24:44.579 au total - 14:42.793 sur l'ES1 = 10:01.786
+    assert bob[0].time_ms == 601_786
+    assert bob[1] == 1
+    assert event.reconstructed == [(2, "Bob")]
+
+
+def test_no_reconstruction_when_several_stages_missing():
+    data = payload()
+    data["stages"][0]["entries"] = [entry("a", "Alice", 1, "00:14:30.5540000")]
+    data["stages"][1]["entries"] = [entry("a", "Alice", 1, "00:10:05")]
+    assert parse_event(data).reconstructed == []

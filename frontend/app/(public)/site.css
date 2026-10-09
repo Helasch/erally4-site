@@ -2566,113 +2566,6 @@
 
 /* --- Spéciales (vue rallye) --------------------------------------------------------- */
 
-/* Bandeau des vainqueurs de spéciales */
-.site .stage-strip {
-  margin: 0 0 24px;
-}
-
-.site .strip-title {
-  margin: 0 0 10px;
-  font-size: 0.85rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: var(--s-muted);
-}
-
-.site .stage-strip ol {
-  display: grid;
-  grid-auto-flow: column;
-  grid-auto-columns: minmax(132px, 1fr);
-  gap: 8px;
-  margin: 0;
-  padding: 0 0 4px;
-  list-style: none;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-}
-
-.site .stage-strip li {
-  scroll-snap-align: start;
-}
-
-.site .stage-strip a {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-  height: 100%;
-  padding: 12px 14px;
-  border-top: 3px solid var(--s-red);
-  background: var(--s-card);
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
-  text-decoration: none;
-}
-
-.site .stage-strip a:hover {
-  background: var(--s-tile);
-}
-
-/* Spéciale affichée */
-.site .strip-es {
-  font-family: var(--s-display);
-  font-style: italic;
-  font-weight: 900;
-  font-size: 1.4rem;
-  line-height: 1;
-  color: var(--s-red-text);
-}
-
-.site .strip-stage {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 0.85rem;
-  font-weight: 600;
-}
-
-.site .strip-meta {
-  font-size: 0.75rem;
-  color: var(--s-muted);
-}
-
-.site .strip-winner {
-  margin-top: auto;
-  padding-top: 6px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-weight: 700;
-}
-
-.site .strip-time {
-  font-variant-numeric: tabular-nums;
-  font-size: 0.85rem;
-}
-
-/* Carte du général : même forme, liseré sombre pour la distinguer des spéciales */
-.site .stage-strip li.strip-overall a {
-  border-top-color: var(--s-black);
-}
-
-.site .stage-strip li.strip-overall .strip-es {
-  color: var(--s-ink);
-}
-
-.site .stage-strip li.strip-overall.active a {
-  border-top-color: var(--s-red);
-}
-
-.site .stage-strip li.active a {
-  background: var(--s-red);
-  color: #fff;
-}
-
-.site .stage-strip li.active .strip-es,
-.site .stage-strip li.active .strip-meta,
-.site .stage-strip li.strip-overall.active .strip-es {
-  color: rgba(255, 255, 255, 0.8);
-}
-
 /* En-tête d'une spéciale */
 .site .stage-head {
   margin: 0 0 16px;
@@ -2939,4 +2832,220 @@
   padding-left: 0;
   padding-right: 0;
   text-align: center;
+}
+
+/* Barre des spéciales (ES1 … ES7, puis Final à droite) */
+.site .stage-bar {
+  margin: 0 0 24px;
+  background: var(--s-card);
+  border-bottom: 6px solid var(--s-black-2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.site .stage-bar ol {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.site .stage-bar li {
+  flex: 1 0 76px;
+}
+
+.site .stage-bar a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  min-height: 72px;
+  padding: 10px 8px;
+  text-decoration: none;
+  color: var(--s-ink);
+}
+
+.site .stage-bar a:hover {
+  background: var(--s-tile);
+}
+
+.site .stage-bar strong {
+  font-family: var(--s-display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.site .stage-bar span {
+  font-size: 0.75rem;
+  color: var(--s-muted);
+  white-space: nowrap;
+}
+
+.site .stage-bar li.bar-final {
+  border-left: 1px solid var(--s-line);
+}
+
+.site .stage-bar li.active a {
+  background: var(--s-black-2);
+  color: #fff;
+}
+
+.site .stage-bar li.active span {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Spéciale : deux tableaux côte à côte (temps de la spéciale, général après la spéciale) */
+.site .boards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+}
+
+.site .board-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 6px;
+}
+
+.site .board-head h2 {
+  margin: 0;
+  font-family: var(--s-display);
+  font-weight: 900;
+  font-size: 1.35rem;
+  text-transform: uppercase;
+}
+
+.site .board-head span {
+  font-size: 0.8rem;
+  color: var(--s-muted);
+}
+
+.site .board-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.site .board-table .col-pos {
+  width: 52px;
+}
+
+.site .board-table .col-time {
+  width: 124px;
+}
+
+.site .board-table .col-gap {
+  width: 106px;
+}
+
+.site .board-table td {
+  height: 58px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site .board-table td.time {
+  white-space: nowrap;
+}
+
+.site .board-table td.pos {
+  line-height: 1;
+}
+
+.site .board-name,
+.site .board-sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site .board-sub {
+  font-size: 0.75rem;
+  color: var(--s-muted);
+}
+
+.site .board-table .penalty-mark {
+  display: inline;
+  margin-left: 6px;
+}
+
+.site .board-evol {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--s-body);
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.site .board-evol.up {
+  color: var(--s-up);
+}
+
+.site .board-evol.down {
+  color: var(--s-down);
+}
+
+@media (max-width: 1100px) {
+  .site .boards {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 860px) {
+  .site .stage-bar li {
+    flex-basis: 64px;
+  }
+
+  .site .stage-bar a {
+    min-height: 60px;
+  }
+
+  .site .board-table .col-pos {
+    width: 40px;
+  }
+
+  .site .board-table .col-time {
+    width: 112px;
+  }
+
+  .site .board-table .col-gap {
+    width: 84px;
+  }
+
+  .site .board-table .penalty-mark {
+    display: block;
+    margin: 0;
+  }
+}
+
+/* Écart sous le temps : seulement sur mobile, où la colonne Écart est masquée */
+.site .board-gap {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .site .board-gap {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--s-muted);
+  }
+
+  .site .board-table .col-time {
+    width: 108px;
+  }
+
+  /* Pas la place sur mobile : le détail des pénalités reste visible sur ordinateur */
+  .site .board-table .penalty-mark {
+    display: none;
+  }
 }

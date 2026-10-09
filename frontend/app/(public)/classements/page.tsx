@@ -15,8 +15,8 @@ import {
 import { formatKm, formatRallyDates, plural, shortRallyName, stageConditions } from "@/lib/format";
 import NavSelect from "../nav-select";
 import PageHeader from "../page-header";
-import { StageWinners, ViewHeader } from "./stages";
-import { RallyTable, StageTable, StandingsTable } from "./tables";
+import { StageBar, ViewHeader } from "./stages";
+import { RallyTable, StageBoards, StandingsTable } from "./tables";
 
 export const dynamic = "force-dynamic";
 
@@ -171,12 +171,6 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
   if (es !== null && !stages.some((s) => s.number === es)) notFound();
   const stageHref = (n: number) => href(keep, { rallye: String(rallyId), es: String(n) });
   const podium = rally.results.filter((r) => r.position !== null).slice(0, 3);
-  const overall = {
-    href: href(keep, { rallye: String(rallyId) }),
-    winner: podium[0]?.name ?? null,
-    time: podium[0]?.time ?? null,
-    finishers: rally.results.filter((r) => r.position !== null).length,
-  };
   const totalKm = stages.reduce((sum, s) => sum + (s.distance_km ?? 0), 0);
   const rallyMeta = [
     formatRallyDates(rally.starts_at, rally.ends_at),
@@ -213,7 +207,14 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
               ))}
             </ol>
           )}
-          {stages.length > 0 && <StageWinners stages={stages} overall={overall} current={es} hrefFor={stageHref} />}
+          {stages.length > 0 && (
+            <StageBar
+              stages={stages}
+              current={es}
+              hrefFor={stageHref}
+              finalHref={href(keep, { rallye: String(rallyId) })}
+            />
+          )}
           {es !== null ? (
             <StageView rallyId={rallyId} es={es} count={stages.length} />
           ) : (
@@ -221,7 +222,7 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
               <ViewHeader kicker={`Manche ${rally.round}`} title={rally.name} meta={rallyMeta} />
               <RallyTable
                 rows={rally.results}
-                title="Classement général"
+                title="Classement final"
                 showPoints={rally.championship.mode === "custom"}
                 stages={stages}
               />
@@ -241,7 +242,7 @@ async function StageView({ rallyId, es, count }: { rallyId: number; es: number; 
   return (
     <>
       <ViewHeader kicker={`Spéciale ${stage.number} sur ${count}`} title={stage.name} meta={meta} />
-      <StageTable rows={stage.results} title="Classement de la spéciale" />
+      <StageBoards stage={stage.results} overall={stage.overall} label={`ES${stage.number}`} />
     </>
   );
 }

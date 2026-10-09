@@ -36,11 +36,13 @@ from app.scoring import (
     Finish,
     PastRallyResult,
     RallyFinish,
+    StageTime,
     TimedResult,
     apply_adjustments,
     classify,
     compare_standings,
     compute_custom_standings,
+    cumulative_after,
     driver_stats,
     suggest_for_championship,
     suggest_for_rally,
@@ -445,12 +447,59 @@ def stage_results_payload(stage: Stage) -> list[dict]:
     return payload
 
 
+def _stage_key(result: StageResult) -> tuple | None:
+    """Identifie un pilote d'une spéciale à l'autre ; None pour un « WRC Player » non identifié (impossible à suivre)."""
+    if result.driver_id is not None:
+        return ("driver", result.driver_id)
+    return None if result.raw_name == ANONYMOUS_NAME else ("name", result.raw_name)
+
+
+def overall_after_stage(rally: Rally, number: int) -> list[dict]:
+    """Classement général cumulé après la spéciale `number`, avec l'évolution depuis la précédente."""
+    times: list[StageTime] = []
+    rows: dict[tuple, StageResult] = {}
+    for stage in rally.stages:
+        for r in stage.results:
+            key = _stage_key(r)
+            if key is None:
+                continue
+            times.append(StageTime(key, stage.number, r.position, r.time_ms))
+            if stage.number == number:
+                rows[key] = r
+    current = cumulative_after(times, number)
+    before = {k: i for i, (k, _) in enumerate(cumulative_after(times, number - 1), start=1)} if number > 1 else {}
+    best = current[0][1] if current else 0
+
+    payload = []
+    previous_total = None
+    for position, (key, total) in enumerate(current, start=1):
+        r = rows[key]
+        payload.append(
+            {
+                "id": r.id,
+                "position": position,
+                **_stage_driver(r),
+                "vehicle": r.vehicle,
+                "platform": r.platform,
+                "time": format_time_ms(total),
+                "diff": format_time_ms(total - best) if position > 1 else None,
+                "diff_prev": format_time_ms(total - previous_total) if previous_total is not None else None,
+                # Places gagnées (positif) ou perdues depuis la spéciale précédente
+                "evol": before[key] - position if key in before else None,
+            }
+        )
+        previous_total = total
+    return payload
+
+
 def stage_splits(rally: Rally) -> dict[tuple, list[dict]]:
     """Parcours de chaque pilote sur les spéciales du rallye, indexé par pilote (ou pseudo s'il n'est pas identifié)."""
     splits: dict[tuple, list[dict]] = defaultdict(list)
     for stage in rally.stages:
         for r in stage.results:
-            key = ("driver", r.driver_id) if r.driver_id is not None else ("name", r.raw_name)
+            key = _stage_key(r)
+            if key is None:
+                continue
             splits[key].append(
                 {
                     "number": stage.number,

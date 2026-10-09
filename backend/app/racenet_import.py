@@ -169,6 +169,12 @@ def build_racenet_preview(
             "Barème personnalisé : le classement général est calculé à partir des rallyes, "
             "le classement RaceNet du championnat est enregistré mais pas affiché."
         )
+    if event.reconstructed:
+        names = ", ".join(f"{name} (ES{number})" for number, name in event.reconstructed)
+        warnings.append(
+            f"RaceNet n'a pas renvoyé {len(event.reconstructed)} temps de spéciale de pilotes classés à "
+            f"l'arrivée : ils ont été reconstitués à partir de leur temps total. {names}."
+        )
     for plan in plans.values():
         if plan.action == "conflict":
             warnings.append(

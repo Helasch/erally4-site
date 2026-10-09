@@ -16,6 +16,7 @@ from app.services import (
     rally_statuses,
     rally_winner,
     not_found,
+    overall_after_stage,
     rally_results_payload,
     read_settings,
     scoring_table,
@@ -133,7 +134,11 @@ def rally_stage(rally_id: int, number: int, db: Session = Depends(get_db)):
     stage = next((s for s in r.stages if s.number == number), None)
     if stage is None:
         raise not_found("Spéciale")
-    return {**stage_summary(stage), "results": stage_results_payload(stage)}
+    return {
+        **stage_summary(stage),
+        "results": stage_results_payload(stage),
+        "overall": overall_after_stage(r, number),
+    }
 
 
 def _season(db: Session, saison: int | None) -> Championship | None:

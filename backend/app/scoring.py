@@ -292,3 +292,35 @@ def apply_adjustments(
     ]
     adjusted.sort(key=lambda e: (-e[2], e[1]))
     return [(i, rank, points) for rank, (i, _, points) in enumerate(adjusted, start=1)]
+
+
+# --- Général après une spéciale ---------------------------------------------------------
+
+
+@dataclass
+class StageTime:
+    key: object  # identifie le pilote (id du pilote, ou pseudo s'il n'est pas identifié)
+    stage: int
+    position: int
+    time_ms: int
+
+
+def cumulative_after(times: list[StageTime], upto: int) -> list[tuple[object, int]]:
+    """Classement cumulé après la spéciale `upto` : (pilote, temps total), du premier au dernier.
+
+    Seuls les pilotes classés sur toutes les spéciales 1 à `upto` y figurent (comme le général
+    de RaceNet) ; à temps égal, le rang sur la dernière spéciale départage.
+    """
+    totals: dict[object, int] = {}
+    stages: dict[object, set[int]] = {}
+    last_position: dict[object, int] = {}
+    for t in times:
+        if t.stage > upto:
+            continue
+        totals[t.key] = totals.get(t.key, 0) + t.time_ms
+        stages.setdefault(t.key, set()).add(t.stage)
+        if t.stage == upto:
+            last_position[t.key] = t.position
+    ranked = [k for k, done in stages.items() if len(done) == upto and k in last_position]
+    ranked.sort(key=lambda k: (totals[k], last_position[k]))
+    return [(k, totals[k]) for k in ranked]

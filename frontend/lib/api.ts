@@ -126,7 +126,23 @@ export type StageResultRow = {
   abandoned: boolean;
 };
 
-export type StageDetail = StageSummary & { results: StageResultRow[] };
+/** Général cumulé après une spéciale */
+export type StageOverallRow = {
+  id: number;
+  position: number;
+  name: string;
+  driver_id: number | null;
+  identified: boolean;
+  vehicle: string;
+  platform: string;
+  time: string;
+  diff: string | null;
+  diff_prev: string | null;
+  /** Places gagnées (positif) ou perdues depuis la spéciale précédente */
+  evol: number | null;
+};
+
+export type StageDetail = StageSummary & { results: StageResultRow[]; overall: StageOverallRow[] };
 
 export type RallyDetail = {
   id: number;

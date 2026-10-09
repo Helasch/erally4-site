@@ -6,6 +6,7 @@ import {
   formatDiff,
   formatTime,
   type RallyResultRow,
+  type StageOverallRow,
   type StageResultRow,
   type StageSplit,
   type StageSummary,
@@ -314,80 +315,174 @@ function Splits({ splits, stages }: { splits: StageSplit[]; stages: StageSummary
 const MAX_TIME = "Temps maximum attribué par RaceNet (abandon ou spéciale non terminée)";
 const RACENET_PENALTY = "Pénalité RaceNet (coupe, faux départ…)";
 
-/** Classement d'une spéciale. */
-export function StageTable({ rows, title }: { rows: StageResultRow[]; title: string }) {
-  const f = useFiltered(rows);
-  const meta = f.searching
-    ? `${f.filtered.length} résultat${f.filtered.length > 1 ? "s" : ""}`
-    : f.all || rows.length <= TOP
-      ? `${rows.length} pilotes`
-      : `Top ${TOP} sur ${rows.length} pilotes`;
+/** Pseudo, puis plateforme et voiture en petit : deux lignes, pour toutes les lignes des deux tableaux. */
+function BoardDriver({ row }: { row: { name: string; driver_id: number | null; platform: string; vehicle: string } }) {
+  return (
+    <>
+      <span className="board-name">
+        <DriverName name={row.name} id={row.driver_id} />
+      </span>
+      <small className="board-sub">
+        {row.platform} · {row.vehicle.replace(/ Rally4$/, "")}
+      </small>
+    </>
+  );
+}
+
+function BoardHead({ timeLabel }: { timeLabel: string }) {
+  return (
+    <thead>
+      <tr>
+        <th className="col-pos">Pos</th>
+        <th>Pilote</th>
+        <th className="col-time r">{timeLabel}</th>
+        <th className="col-gap r hide-sm">Écart préc.</th>
+        <th className="col-gap r hide-sm">Écart</th>
+      </tr>
+    </thead>
+  );
+}
+
+/** Spéciale : temps de la spéciale à gauche, général cumulé après cette spéciale à droite. */
+export function StageBoards({
+  stage,
+  overall,
+  label,
+}: {
+  stage: StageResultRow[];
+  overall: StageOverallRow[];
+  /** Ex. « ES3 » */
+  label: string;
+}) {
+  const [query, setQuery] = useState("");
+  const [all, setAll] = useState(false);
+  const q = query.trim().toLowerCase();
+  const pick = <T extends { name: string }>(rows: T[]) => {
+    const filtered = q ? rows.filter((r) => r.name.toLowerCase().includes(q)) : rows;
+    return q || all ? filtered : filtered.slice(0, TOP);
+  };
+  const stageRows = pick(stage);
+  const overallRows = pick(overall);
+  const total = Math.max(stage.length, overall.length);
 
   return (
-    <TableCard
-      title={title}
-      meta={meta}
-      query={f.query}
-      setQuery={f.setQuery}
-      footer={<ShowAll total={rows.length} all={f.all} setAll={f.setAll} searching={f.searching} found={f.filtered.length} />}
-    >
-      <div className="table-scroll">
-        <table className="rank-table rank-table-lg fixed-cols">
-          <thead>
-            <tr>
-              <ResultColumns />
-              <th className="toggle-col" aria-hidden="true" />
-            </tr>
-          </thead>
-          <tbody>
-            {f.shown.map((r) => (
-              <tr key={r.id} className={`${r.identified ? "" : "unidentified"}${r.abandoned ? " abandoned" : ""}`}>
-                <td className={`pos pos-${r.position}`}>{r.position}</td>
-                <td>
-                  <span className="driver-cell">
-                    <DriverName name={r.name} id={r.driver_id} />
-                    <span className="platform">{r.platform}</span>
-                  </span>
-                  <small className="show-sm">
-                        {r.platform} · {r.vehicle.replace(/ Rally4$/, "")}
-                      </small>
-                </td>
-                <td className="hide-sm muted-cell">{r.vehicle}</td>
-                {r.abandoned ? (
-                  <td className="r time muted-cell hide-sm" colSpan={3} title={MAX_TIME}>
-                    Temps max · {formatTime(r.time)}
-                  </td>
-                ) : (
-                  <>
-                    <td className="r time hide-sm">
-                      {formatTime(r.time)}
-                      <PenaltyMark penalty={r.penalty_s} reason={RACENET_PENALTY} />
+    <article className="card-block boards-card">
+      <label className="search">
+        <span className="visually-hidden">Rechercher un pilote</span>
+        <input type="search" value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Rechercher un pilote…" />
+      </label>
+      <div className="boards">
+        <section>
+          <header className="board-head">
+            <h2>Temps de la spéciale</h2>
+            <span>{stage.length} pilotes</span>
+          </header>
+          <div className="table-scroll">
+            <table className="rank-table board-table">
+              <BoardHead timeLabel="Temps" />
+              <tbody>
+                {stageRows.map((r) => (
+                  <tr key={r.id} className={`${r.identified ? "" : "unidentified"}${r.abandoned ? " abandoned" : ""}`}>
+                    <td className={`pos pos-${r.position}`}>{r.position}</td>
+                    <td>
+                      <BoardDriver row={r} />
                     </td>
-                    <td className="r time muted-cell hide-md">{r.diff_prev ? formatDiff(r.diff_prev) : "—"}</td>
+                    {r.abandoned ? (
+                      <>
+                        <td className="r time muted-cell" title={MAX_TIME}>
+                          Temps max
+                        </td>
+                        <td className="r time muted-cell hide-sm">—</td>
+                        <td className="r time muted-cell hide-sm">—</td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="r time">
+                          {formatTime(r.time)}
+                          <PenaltyMark penalty={r.penalty_s} reason={RACENET_PENALTY} />
+                          {r.diff && <small className="board-gap">{formatDiff(r.diff)}</small>}
+                        </td>
+                        <td className="r time muted-cell hide-sm">{r.diff_prev ? formatDiff(r.diff_prev) : "—"}</td>
+                        <td className="r time hide-sm">{r.diff ? formatDiff(r.diff) : "—"}</td>
+                      </>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section>
+          <header className="board-head">
+            <h2>Général après {label}</h2>
+            <span>{overall.length} pilotes</span>
+          </header>
+          <div className="table-scroll">
+            <table className="rank-table board-table">
+              <BoardHead timeLabel="Temps total" />
+              <tbody>
+                {overallRows.map((r) => (
+                  <tr key={r.id} className={r.identified ? "" : "unidentified"}>
+                    <td className={`pos pos-${r.position}`}>
+                      {r.position}
+                      <Evolution value={r.evol} />
+                    </td>
+                    <td>
+                      <BoardDriver row={r} />
+                    </td>
+                    <td className="r time">
+                      {formatTime(r.time)}
+                      {r.diff && <small className="board-gap">{formatDiff(r.diff)}</small>}
+                    </td>
+                    <td className="r time muted-cell hide-sm">{r.diff_prev ? formatDiff(r.diff_prev) : "—"}</td>
                     <td className="r time hide-sm">{r.diff ? formatDiff(r.diff) : "—"}</td>
-                  </>
-                )}
-                <td className="r time only-sm" title={r.abandoned ? MAX_TIME : undefined}>
-                  {r.abandoned ? "Temps max" : r.position === 1 ? formatTime(r.time) : r.diff ? formatDiff(r.diff) : "—"}
-                  {!r.abandoned && <PenaltyMark penalty={r.penalty_s} reason={RACENET_PENALTY} />}
-                </td>
-                <td className="toggle-col" />
-              </tr>
-            ))}
-          </tbody>
-        </table>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
       </div>
-    </TableCard>
+      {q ? (
+        stageRows.length + overallRows.length === 0 && <p className="empty">Aucun pilote ne correspond à cette recherche.</p>
+      ) : (
+        total > TOP && (
+          <button className="show-all" onClick={() => setAll(!all)}>
+            {all ? `Revenir au top ${TOP}` : `Afficher les ${total} pilotes`}
+          </button>
+        )
+      )}
+    </article>
+  );
+}
+
+/** Places gagnées ou perdues depuis la spéciale précédente. */
+function Evolution({ value }: { value: number | null }) {
+  if (!value) return null;
+  const up = value > 0;
+  return (
+    <span
+      className={`board-evol ${up ? "up" : "down"}`}
+      title={`${up ? "Gagne" : "Perd"} ${Math.abs(value)} place${Math.abs(value) > 1 ? "s" : ""}`}
+    >
+      {up ? "▲" : "▼"}
+      {Math.abs(value)}
+    </span>
   );
 }
 
 /** Pénalité de temps affichée à côté du temps (motif au survol). */
 function PenaltyMark({ penalty, reason }: { penalty: number; reason: string | null }) {
   if (!penalty) return null;
-  const seconds = penalty.toLocaleString("fr-FR");
+  // Au-delà d'une minute : « +2:00 » plutôt que « +120 s »
+  const seconds =
+    penalty >= 60
+      ? `${Math.floor(penalty / 60)}:${String(Math.floor(penalty % 60)).padStart(2, "0")}`
+      : `${penalty.toLocaleString("fr-FR")} s`;
   return (
-    <span className="penalty-mark" title={`Dont ${seconds} s de pénalité${reason ? ` · ${reason}` : ""}`}>
-      +{seconds} s
+    <span className="penalty-mark" title={`Dont ${seconds} de pénalité${reason ? ` · ${reason}` : ""}`}>
+      +{seconds}
     </span>
   );
 }

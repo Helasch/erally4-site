@@ -82,6 +82,8 @@ class ParsedEvent:
     overall: list[tuple[Entry, int, int, int]]
     # Classement du championnat après l'épreuve (vide s'il n'a pas été récupéré)
     standings: list[Entry] = field(default_factory=list)
+    # Temps de spéciale absents de RaceNet, reconstitués : (numéro de spéciale, pseudo)
+    reconstructed: list[tuple[int, str]] = field(default_factory=list)
 
     def drivers(self) -> dict[str, Entry]:
         """Tous les pilotes vus dans l'épreuve, par identifiant RaceNet."""
@@ -194,6 +196,7 @@ def parse_event(payload: dict) -> ParsedEvent:
         raise RacenetError("nombre de spéciales incohérent avec l'épreuve RaceNet")
 
     stages = []
+    stage_entries: list[list[Entry]] = []
     for number, (definition, raw) in enumerate(zip(stage_defs, raw_stages), start=1):
         what = f"ES{number}"
         definition = definition if isinstance(definition, dict) else {}
@@ -208,9 +211,13 @@ def parse_event(payload: dict) -> ParsedEvent:
             conditions=_text(settings.get("weatherAndSurface"), f"{what} : conditions", 64, required=False),
             time_of_day=_text(settings.get("timeOfDay"), f"{what} : horaire", 32, required=False),
         )
-        ranked = _ranked(_entries(raw.get("entries"), what), lambda e: e.time_ms)
-        stage.entries = [(e, position, diff) for e, position, _, diff in ranked]
+        stage_entries.append(_entries(raw.get("entries"), what))
         stages.append(stage)
+
+    overall_entries = _entries(payload.get("overall"), "Général")
+    reconstructed = fill_missing_stage_times(stage_entries, overall_entries)
+    for stage, entries in zip(stages, stage_entries):
+        stage.entries = [(e, position, diff) for e, position, _, diff in _ranked(entries, lambda e: e.time_ms)]
 
     standings = payload.get("standings")
     settings = event.get("eventSettings") or {}
@@ -223,9 +230,43 @@ def parse_event(payload: dict) -> ParsedEvent:
         starts_at=_paris(event.get("absoluteOpenDate")),
         ends_at=_paris(event.get("absoluteCloseDate")),
         stages=stages,
-        overall=_ranked(_entries(payload.get("overall"), "Général"), lambda e: e.accumulated_ms),
+        overall=_ranked(overall_entries, lambda e: e.accumulated_ms),
         standings=_entries(standings, "Championnat") if standings else [],
+        reconstructed=reconstructed,
     )
+
+
+def fill_missing_stage_times(stage_entries: list[list[Entry]], overall: list[Entry]) -> list[tuple[int, str]]:
+    """Reconstitue le temps d'un pilote classé à l'arrivée mais absent du classement d'une seule spéciale.
+
+    Il arrive que RaceNet ne renvoie pas une ligne dans le classement d'une spéciale alors que le
+    pilote figure au général : son temps se déduit alors exactement (temps total moins ses autres
+    spéciales). Renvoie la liste (numéro de spéciale, pseudo) des temps reconstitués.
+    """
+    by_stage = [{e.racenet_id: e for e in entries} for entries in stage_entries]
+    filled = []
+    for driver in overall:
+        missing = [i for i, known in enumerate(by_stage) if driver.racenet_id not in known]
+        if len(missing) != 1 or not driver.accumulated_ms:
+            continue
+        others = sum(known[driver.racenet_id].time_ms for known in by_stage if driver.racenet_id in known)
+        time_ms = driver.accumulated_ms - others
+        if time_ms <= 0:
+            continue
+        index = missing[0]
+        entry = Entry(
+            racenet_id=driver.racenet_id,
+            name=driver.name,
+            # Rang inconnu : placé après les autres à temps égal
+            rank=10_000,
+            vehicle=driver.vehicle,
+            platform=driver.platform,
+            time_ms=time_ms,
+        )
+        stage_entries[index].append(entry)
+        by_stage[index][driver.racenet_id] = entry
+        filled.append((index + 1, driver.name))
+    return filled
 
 
 def strip_identities(payload: dict) -> dict:
