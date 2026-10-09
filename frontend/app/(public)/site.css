@@ -3111,3 +3111,22 @@
     animation: none;
   }
 }
+
+/* Ligne du pilote connecté : repérable d'un coup d'œil dans tous les classements */
+.site .rank-table tbody tr.me td,
+.site .rank-table tbody tr.me:hover td {
+  background: #f8dfe1;
+}
+
+.site .rank-table tbody tr.me td:first-child {
+  box-shadow: inset 4px 0 0 var(--s-red-bright);
+}
+
+.site .rank-table tbody tr.me td.pos {
+  color: var(--s-red-text);
+}
+
+.site .rank-table tbody tr.me .driver-link {
+  color: var(--s-red-text);
+  font-weight: 800;
+}
