@@ -785,3 +785,68 @@ a.button.primary {
   align-items: center;
   gap: 6px;
 }
+
+/* --- Import RaceNet ---------------------------------------------------------------- */
+
+.admin .steps {
+  padding-left: 20px;
+  line-height: 1.7;
+}
+
+.admin .steps li + li {
+  margin-top: 6px;
+}
+
+/* Favori à glisser dans la barre du navigateur */
+.admin .bookmarklet {
+  display: inline-block;
+  margin: 4px 0;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: grab;
+  user-select: none;
+}
+
+.admin .bookmarklet::before {
+  content: "★ ";
+}
+
+.admin label.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  font-weight: normal;
+}
+
+.admin label.checkbox input {
+  width: auto;
+}
+
+.admin .anonymous-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  padding: 8px 0;
+  border-top: 1px solid var(--border-soft);
+}
+
+.admin .csv-import {
+  margin-top: 24px;
+}
+
+.admin .csv-import > summary {
+  cursor: pointer;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.admin main h3 {
+  margin: 20px 0 8px;
+}

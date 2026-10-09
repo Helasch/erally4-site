@@ -122,3 +122,25 @@ def test_driver_stats():
 
 def test_driver_stats_empty():
     assert driver_stats([]) == DriverStats()
+
+
+def test_cumulative_after_stage():
+    from app.scoring import StageTime, cumulative_after
+
+    times = [
+        StageTime("a", 1, 1, 1000),
+        StageTime("b", 1, 2, 1100),
+        StageTime("c", 1, 3, 1200),
+        StageTime("a", 2, 3, 900),
+        StageTime("b", 2, 1, 700),
+        # c n'a pas couru l'ES2 : absent du cumul après l'ES2
+    ]
+    assert cumulative_after(times, 1) == [("a", 1000), ("b", 1100), ("c", 1200)]
+    assert cumulative_after(times, 2) == [("b", 1800), ("a", 1900)]
+
+
+def test_cumulative_tie_broken_by_last_stage():
+    from app.scoring import StageTime, cumulative_after
+
+    times = [StageTime("a", 1, 1, 1000), StageTime("b", 1, 2, 1000)]
+    assert [k for k, _ in cumulative_after(times, 1)] == ["a", "b"]

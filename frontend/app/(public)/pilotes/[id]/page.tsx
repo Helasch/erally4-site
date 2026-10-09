@@ -142,6 +142,12 @@ export default async function PilotePage({ params }: { params: Promise<{ id: str
                     <dt>Écart moyen au vainqueur</dt>
                     <dd>{stats.average_gap_ms !== null ? formatGapMs(stats.average_gap_ms) : "—"}</dd>
                   </div>
+                  {stats.stage_wins !== undefined && (
+                    <div>
+                      <dt>Spéciales gagnées</dt>
+                      <dd>{stats.stage_wins}</dd>
+                    </div>
+                  )}
                   <div>
                     <dt>Top 10</dt>
                     <dd>

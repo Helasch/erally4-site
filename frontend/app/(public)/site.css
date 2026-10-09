@@ -2563,3 +2563,551 @@
     font-size: 0.7rem;
   }
 }
+
+/* --- Spéciales (vue rallye) --------------------------------------------------------- */
+
+/* En-tête d'une spéciale */
+.site .stage-head {
+  margin: 0 0 16px;
+}
+
+.site .stage-kicker {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--s-red-text);
+}
+
+.site .stage-head h2 {
+  margin: 2px 0 4px;
+  font-family: var(--s-display);
+  font-weight: 900;
+  font-size: 1.8rem;
+  line-height: 1.1;
+}
+
+.site .stage-meta {
+  margin: 0;
+  color: var(--s-muted);
+}
+
+/* Lignes dépliables : parcours du pilote sur les spéciales */
+.site .table-hint {
+  margin: 0 0 8px;
+  font-size: 0.8rem;
+  color: var(--s-muted);
+}
+
+.site .rank-table.expandable tbody tr:not(.splits-row) {
+  cursor: pointer;
+}
+
+.site .rank-table .toggle-col {
+  width: 36px;
+  padding-left: 0;
+  padding-right: 4px;
+}
+
+.site .row-toggle {
+  display: inline-grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--s-muted);
+  font-size: 1rem;
+  cursor: pointer;
+  transition: transform 0.15s;
+}
+
+.site .row-toggle:hover,
+.site .row-toggle:focus-visible {
+  background: var(--s-tile);
+  color: var(--s-red-text);
+}
+
+.site tr.open .row-toggle {
+  transform: rotate(180deg);
+}
+
+.site .rank-table tr.open td {
+  background: var(--s-tile);
+}
+
+.site .rank-table tbody tr.splits-row td {
+  padding: 4px 8px 14px;
+  border-top: 0;
+  background: var(--s-tile);
+  white-space: normal;
+}
+
+.site .rank-table tbody tr.splits-row:hover td {
+  background: var(--s-tile);
+}
+
+.site .splits ol {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.site .splits li {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 74px;
+  padding: 6px 8px;
+  border: 1px solid var(--s-line);
+  background: #fff;
+}
+
+.site .split-es {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: var(--s-muted);
+}
+
+.site .splits strong {
+  font-family: var(--s-display);
+  font-weight: 900;
+  font-size: 1.25rem;
+  line-height: 1.1;
+}
+
+.site .split-time {
+  font-size: 0.72rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--s-muted);
+}
+
+.site .splits li.win {
+  border-color: var(--s-red);
+  background: var(--s-red);
+  color: #fff;
+}
+
+.site .splits li.win .split-es,
+.site .splits li.win .split-time {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.site .splits li.podium {
+  border-color: var(--s-red);
+}
+
+.site .splits li.podium strong {
+  color: var(--s-red-text);
+}
+
+.site .splits li.abandoned,
+.site .splits li.none {
+  opacity: 0.6;
+}
+
+.site .splits-note {
+  margin: 8px 0 0;
+  font-size: 0.8rem;
+  font-weight: 700;
+  color: var(--s-red-text);
+}
+
+.site .rank-table tr.abandoned td {
+  color: var(--s-muted);
+}
+
+.site .rank-table td.stage-wins {
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 860px) {
+  .site .stage-head h2 {
+    font-size: 1.4rem;
+  }
+
+  .site .splits li {
+    min-width: 64px;
+  }
+}
+
+/* Classements d'un rallye et des spéciales : colonnes de largeur fixe, pour que tous
+   les tableaux soient identiques quel que soit leur contenu (pénalités, pseudos longs…) */
+.site .rank-table.fixed-cols {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.site .fixed-cols .col-pos {
+  width: 64px;
+}
+
+.site .fixed-cols .col-car {
+  width: 22%;
+}
+
+.site .fixed-cols .col-time {
+  width: 15%;
+}
+
+.site .fixed-cols .col-gap {
+  width: 13%;
+}
+
+.site .fixed-cols .col-pts {
+  width: 64px;
+}
+
+.site .fixed-cols .col-mobile {
+  width: 128px;
+}
+
+.site .fixed-cols td {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site .fixed-cols td.time {
+  white-space: nowrap;
+}
+
+/* Pénalité sur la même ligne que le temps : la hauteur des lignes ne change pas */
+.site .fixed-cols .penalty-mark {
+  display: inline;
+  margin-left: 6px;
+}
+
+@media (max-width: 860px) {
+  .site .fixed-cols .col-pos {
+    width: 40px;
+  }
+
+  .site .fixed-cols .toggle-col {
+    width: 30px;
+  }
+}
+
+/* Le bouton ▾ ne doit pas agrandir la ligne (même hauteur que sur les spéciales) */
+.site .fixed-cols .row-toggle {
+  margin: -6px 0;
+  vertical-align: middle;
+}
+
+/* Mobile : une hauteur de ligne constante (pseudo sur une ligne, plateforme et voiture dessous) */
+@media (max-width: 860px) {
+  .site .rank-table.fixed-cols td:nth-child(2) {
+    white-space: nowrap;
+  }
+
+  .site .fixed-cols .driver-cell {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .site .fixed-cols .driver-cell .platform {
+    display: none;
+  }
+
+  .site .fixed-cols .show-sm {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .site .fixed-cols .col-mobile {
+    width: 118px;
+  }
+}
+
+.site .fixed-cols td.toggle-col {
+  overflow: visible;
+  padding-left: 0;
+  padding-right: 0;
+  text-align: center;
+}
+
+/* Barre des spéciales (ES1 … ES7, puis Final à droite) */
+.site .stage-bar {
+  margin: 0 0 24px;
+  background: var(--s-card);
+  border-bottom: 6px solid var(--s-black-2);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+}
+
+.site .stage-bar ol {
+  display: flex;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.site .stage-bar li {
+  flex: 1 0 76px;
+}
+
+.site .stage-bar a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 100%;
+  min-height: 72px;
+  padding: 10px 8px;
+  text-decoration: none;
+  color: var(--s-ink);
+}
+
+.site .stage-bar a:hover {
+  background: var(--s-tile);
+}
+
+.site .stage-bar strong {
+  font-family: var(--s-display);
+  font-weight: 800;
+  font-size: 1.1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.site .stage-bar span {
+  font-size: 0.75rem;
+  color: var(--s-muted);
+  white-space: nowrap;
+}
+
+.site .stage-bar li.bar-final {
+  border-left: 1px solid var(--s-line);
+}
+
+.site .stage-bar li.active a {
+  background: var(--s-black-2);
+  color: #fff;
+}
+
+.site .stage-bar li.active span {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Spéciale : deux tableaux côte à côte (temps de la spéciale, général après la spéciale) */
+.site .boards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 28px;
+}
+
+.site .board-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 8px 0 6px;
+}
+
+.site .board-head h2 {
+  margin: 0;
+  font-family: var(--s-display);
+  font-weight: 900;
+  font-size: 1.35rem;
+  text-transform: uppercase;
+}
+
+.site .board-head span {
+  font-size: 0.8rem;
+  color: var(--s-muted);
+}
+
+.site .board-table {
+  width: 100%;
+  table-layout: fixed;
+}
+
+.site .board-table .col-pos {
+  width: 52px;
+}
+
+.site .board-table .col-time {
+  width: 124px;
+}
+
+.site .board-table .col-gap {
+  width: 106px;
+}
+
+.site .board-table td {
+  height: 58px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.site .board-table td.time {
+  white-space: nowrap;
+}
+
+.site .board-table td.pos {
+  line-height: 1;
+}
+
+.site .board-name,
+.site .board-sub {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.site .board-sub {
+  font-size: 0.75rem;
+  color: var(--s-muted);
+}
+
+.site .board-table .penalty-mark {
+  display: inline;
+  margin-left: 6px;
+}
+
+.site .board-evol {
+  display: block;
+  margin-top: 3px;
+  font-family: var(--s-body);
+  font-style: normal;
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.site .board-evol.up {
+  color: var(--s-up);
+}
+
+.site .board-evol.down {
+  color: var(--s-down);
+}
+
+@media (max-width: 1100px) {
+  .site .boards {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 20px;
+  }
+}
+
+@media (max-width: 860px) {
+  .site .stage-bar li {
+    flex-basis: 64px;
+  }
+
+  .site .stage-bar a {
+    min-height: 60px;
+  }
+
+  .site .board-table .col-pos {
+    width: 40px;
+  }
+
+  .site .board-table .col-time {
+    width: 112px;
+  }
+
+  .site .board-table .col-gap {
+    width: 84px;
+  }
+
+  .site .board-table .penalty-mark {
+    display: block;
+    margin: 0;
+  }
+}
+
+/* Écart sous le temps : seulement sur mobile, où la colonne Écart est masquée */
+.site .board-gap {
+  display: none;
+}
+
+@media (max-width: 860px) {
+  .site .board-gap {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--s-muted);
+  }
+
+  .site .board-table .col-time {
+    width: 108px;
+  }
+
+  /* Pas la place sur mobile : le détail des pénalités reste visible sur ordinateur */
+  .site .board-table .penalty-mark {
+    display: none;
+  }
+}
+
+/* Rallye en cours : point clignotant dans l'onglet, badge et note sur la vue du rallye */
+.site .live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: var(--s-red-bright);
+  vertical-align: 2px;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
+.site .view-bar .cal-status {
+  flex: none;
+}
+
+.site .view-bar .cal-status.live::before {
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
+.site .live-note {
+  margin: -8px 0 18px;
+  font-size: 0.85rem;
+  color: var(--s-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site .live-dot {
+    animation: none;
+  }
+}
+
+/* Bandeau du haut et accueil pendant un rallye en cours */
+.site .ticker-label .live-dot {
+  margin: 0 6px 0 0;
+  background: #fff;
+}
+
+.site .hero-live {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  background: var(--s-red-bright);
+  color: #fff;
+}
+
+.site .hero-live::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site .hero-live::before {
+    animation: none;
+  }
+}

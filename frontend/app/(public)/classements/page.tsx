@@ -9,16 +9,18 @@ import {
   type Championship,
   type ChampionshipListItem,
   type RallyDetail,
+  type StageDetail,
   type Standings,
 } from "@/lib/api";
-import { shortRallyName } from "@/lib/format";
+import { formatKm, formatRallyDates, plural, shortRallyName, stageConditions } from "@/lib/format";
 import NavSelect from "../nav-select";
 import PageHeader from "../page-header";
-import { RallyTable, StandingsTable } from "./tables";
+import { StageBar, ViewHeader } from "./stages";
+import { RallyTable, StageBoards, StandingsTable } from "./tables";
 
 export const dynamic = "force-dynamic";
 
-type Search = { saison?: string; rallye?: string; apres?: string };
+type Search = { saison?: string; rallye?: string; apres?: string; es?: string };
 
 const isId = (v?: string) => !!v && /^\d+$/.test(v);
 
@@ -64,9 +66,10 @@ export default async function ClassementsPage({ searchParams }: { searchParams: 
             <Link
               key={r.id}
               href={href(keep, { rallye: String(r.id) })}
-              className={rallyId === r.id ? "active" : ""}
+              className={`${rallyId === r.id ? "active" : ""}${r.status === "live" ? " tab-live" : ""}`}
             >
               {shortRallyName(r.name)}
+              {r.status === "live" && <span className="live-dot" title="En cours" />}
             </Link>
           ))}
         </nav>
@@ -77,7 +80,7 @@ export default async function ClassementsPage({ searchParams }: { searchParams: 
           {rallyId === null ? (
             <ChampionshipView championship={championship} search={search} keep={keep} />
           ) : (
-            <RallyView rallyId={rallyId} />
+            <RallyView rallyId={rallyId} es={isId(search.es) ? Number(search.es) : null} keep={keep} />
           )}
         </div>
       </section>
@@ -155,6 +158,7 @@ async function ChampionshipView({
           <StandingsTable
             rows={rows}
             gainedLabel={standings.previous && after ? `+ ${shortRallyName(after.name)}` : null}
+            showStageWins={standings.has_stages}
           />
         </>
       )}
@@ -162,9 +166,19 @@ async function ChampionshipView({
   );
 }
 
-async function RallyView({ rallyId }: { rallyId: number }) {
+async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | null; keep: Search }) {
   const rally = await apiGet<RallyDetail>(`/api/rallies/${rallyId}`);
+  const stages = rally.stages ?? [];
+  if (es !== null && !stages.some((s) => s.number === es)) notFound();
+  const stageHref = (n: number) => href(keep, { rallye: String(rallyId), es: String(n) });
   const podium = rally.results.filter((r) => r.position !== null).slice(0, 3);
+  const live = rally.status === "live";
+  const totalKm = stages.reduce((sum, s) => sum + (s.distance_km ?? 0), 0);
+  const rallyMeta = [
+    formatRallyDates(rally.starts_at, rally.ends_at),
+    stages.length > 0 ? plural(stages.length, "spéciale") : null,
+    totalKm > 0 ? formatKm(Math.round(totalKm * 10) / 10) : null,
+  ].filter((x): x is string => Boolean(x));
 
   return (
     <>
@@ -172,33 +186,73 @@ async function RallyView({ rallyId }: { rallyId: number }) {
         <p className="view-label">
           Résultats · manche {rally.round} · {rally.name}
         </p>
+        {live && <span className="cal-status live">En cours</span>}
       </div>
 
-      {rally.results.length === 0 ? (
+      {live && (
+        <p className="live-note">
+          Rallye en cours : les classements sont provisoires et évoluent à chaque mise à jour des résultats.
+        </p>
+      )}
+
+      {rally.results.length === 0 && es === null ? (
         <p className="card-block empty">Résultats pas encore publiés.</p>
       ) : (
         <>
-          <ol className="leader-cards">
-            {podium.map((r, i) => (
-              <li key={r.id} className={i === 0 ? "first" : ""}>
-                <span className="leader-pos">{r.position}</span>
-                <span className="leader-body">
-                  <span className="leader-name">
-                    {r.driver_id !== null ? <Link href={`/pilotes/${r.driver_id}`}>{r.name}</Link> : r.name}
+          {/* Le podium du rallye reste affiché, y compris sur les spéciales */}
+          {podium.length > 0 && (
+            <ol className="leader-cards">
+              {podium.map((r, i) => (
+                <li key={r.id} className={i === 0 ? "first" : ""}>
+                  <span className="leader-pos">{r.position}</span>
+                  <span className="leader-body">
+                    <span className="leader-name">
+                      {r.driver_id !== null ? <Link href={`/pilotes/${r.driver_id}`}>{r.name}</Link> : r.name}
+                    </span>
+                    <strong>{i === 0 || !r.diff ? formatTime(r.time) : formatDiff(r.diff)}</strong>
+                    <small>{r.vehicle}</small>
                   </span>
-                  <strong>{i === 0 || !r.diff ? formatTime(r.time) : formatDiff(r.diff)}</strong>
-                  <small>{r.vehicle}</small>
-                </span>
-              </li>
-            ))}
-          </ol>
-          <RallyTable
-            rows={rally.results}
-            title={shortRallyName(rally.name)}
-            showPoints={rally.championship.mode === "custom"}
-          />
+                </li>
+              ))}
+            </ol>
+          )}
+          {stages.length > 0 && (
+            <StageBar
+              stages={stages}
+              current={es}
+              hrefFor={stageHref}
+              finalHref={href(keep, { rallye: String(rallyId) })}
+              finalLabel={live ? "Général" : "Final"}
+            />
+          )}
+          {es !== null ? (
+            <StageView rallyId={rallyId} es={es} count={stages.length} />
+          ) : (
+            <>
+              <ViewHeader kicker={`Manche ${rally.round}`} title={rally.name} meta={rallyMeta} />
+              <RallyTable
+                rows={rally.results}
+                title={live ? "Classement provisoire" : "Classement final"}
+                showPoints={rally.championship.mode === "custom"}
+                stages={stages}
+              />
+            </>
+          )}
         </>
       )}
+    </>
+  );
+}
+
+async function StageView({ rallyId, es, count }: { rallyId: number; es: number; count: number }) {
+  const stage = await apiGet<StageDetail>(`/api/rallies/${rallyId}/stages/${es}`);
+  const meta = [formatKm(stage.distance_km), stageConditions(stage.conditions, stage.time_of_day)].filter(
+    (x): x is string => Boolean(x),
+  );
+  return (
+    <>
+      <ViewHeader kicker={`Spéciale ${stage.number} sur ${count}`} title={stage.name} meta={meta} />
+      <StageBoards stage={stage.results} overall={stage.overall} label={`ES${stage.number}`} />
     </>
   );
 }

@@ -21,8 +21,10 @@ from app.models import (
     Rally,
     RallyResult,
     ScoringPoint,
+    StageResult,
     StandingAdjustment,
 )
+from app.racenet_import import build_racenet_preview, commit_racenet_import
 from app.security import authenticate, check_ip_rate_limit, client_ip, close_session, current_session, open_session
 from app.services import (
     admin_accounts,
@@ -96,6 +98,8 @@ def _championship_payload(c: Championship) -> dict:
                 "ends_at": r.ends_at,
                 "status": statuses[r.id],
                 "result_count": len(r.results),
+                "stage_count": len(r.stages),
+                "racenet_event_id": r.racenet_event_id,
                 "unidentified": sum(1 for x in r.results if x.driver_id is None),
             }
             for r in c.rallies
@@ -348,6 +352,41 @@ def list_imports(championship_id: int, db: Session = Depends(get_db)):
     ]
 
 
+# --- Import direct depuis RaceNet ------------------------------------------------------
+
+
+class RacenetImportBody(BaseModel):
+    championship_id: int
+    rally_id: int | None = None
+    # Réponses brutes de l'API RaceNet relayées par le favori (validées par app.racenet)
+    payload: dict
+    # Identifiant RaceNet d'un « WRC Player » inconnu → pseudo choisi par l'admin
+    resolutions: dict[str, str] = Field(default_factory=dict)
+    update_dates: bool = False
+
+
+@router.post("/imports/racenet/preview", dependencies=protected)
+def preview_racenet_import(body: RacenetImportBody, db: Session = Depends(get_db)):
+    c = get_championship(db, body.championship_id)
+    return build_racenet_preview(db, c, _rally_for(db, body.rally_id), body.payload)
+
+
+@router.post("/imports/racenet", status_code=201)
+def create_racenet_import(
+    body: RacenetImportBody,
+    db: Session = Depends(get_db),
+    session: AdminSession = Depends(current_session),
+):
+    c = get_championship(db, body.championship_id)
+    rally = _rally_for(db, body.rally_id)
+    if rally is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Choisissez le rallye correspondant à l'épreuve.")
+    record = commit_racenet_import(
+        db, c, rally, body.payload, body.resolutions, body.update_dates, session.admin_id
+    )
+    return {"id": record.id, "kind": record.kind, "row_count": record.row_count, "rally_id": rally.id}
+
+
 # --- Pilotes et corrections ------------------------------------------------------------
 
 
@@ -396,6 +435,15 @@ def merge_driver(driver_id: int, body: DriverMerge, db: Session = Depends(get_db
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Impossible de fusionner un pilote avec lui-même.")
     db.execute(update(RallyResult).where(RallyResult.driver_id == source.id).values(driver_id=target.id))
     db.execute(update(RacenetStanding).where(RacenetStanding.driver_id == source.id).values(driver_id=target.id))
+    db.execute(update(StageResult).where(StageResult.driver_id == source.id).values(driver_id=target.id))
+    db.execute(
+        update(StandingAdjustment).where(StandingAdjustment.driver_id == source.id).values(driver_id=target.id)
+    )
+    # L'identifiant RaceNet suit la fusion, pour que les prochains imports retrouvent la cible
+    if source.racenet_id and not target.racenet_id:
+        racenet_id, source.racenet_id = source.racenet_id, None
+        db.flush()
+        target.racenet_id = racenet_id
     # Un compte pilote relié au doublon suit la fusion si la cible n'a pas déjà de compte
     if source.account is not None and target.account is None:
         source.account.driver_id = target.id
@@ -439,6 +487,7 @@ class SettingsBody(BaseModel):
     discord_client_secret: str | None = Field(default=None, max_length=200)
     discord_guild_id: str | None = Field(default=None, max_length=32)
     site_url: str | None = Field(default=None, max_length=200)
+    racenet_club_id: str | None = Field(default=None, max_length=12)
 
 
 def _settings_payload(db: Session, request: Request) -> dict:

@@ -9,6 +9,7 @@ type Settings = {
   discord_client_secret_set: boolean;
   discord_guild_id: string;
   site_url: string;
+  racenet_club_id: string;
   discord_redirect_uri: string;
 };
 
@@ -33,6 +34,7 @@ export default function SettingsPage() {
         discord_client_id: settings.discord_client_id,
         discord_guild_id: settings.discord_guild_id,
         site_url: settings.site_url,
+        racenet_club_id: settings.racenet_club_id,
         // Le secret n'est envoyé que s'il a été saisi (il n'est jamais réaffiché)
         ...(secret ? { discord_client_secret: secret } : {}),
       });
@@ -129,6 +131,22 @@ export default function SettingsPage() {
           />
           <p className="muted" style={{ margin: "6px 0 0" }}>
             À renseigner seulement si l&apos;adresse de retour ci-dessus est incorrecte.
+          </p>
+        </section>
+
+        <section className="card">
+          <h2>Club RaceNet</h2>
+          <label htmlFor="racenet_club">Identifiant du club</label>
+          <input
+            id="racenet_club"
+            value={settings.racenet_club_id ?? ""}
+            onChange={set("racenet_club_id")}
+            inputMode="numeric"
+            placeholder="39709"
+          />
+          <p className="muted" style={{ margin: "6px 0 0" }}>
+            Nombre visible dans l&apos;adresse de la page du club sur racenet.com. Utilisé par l&apos;import direct
+            depuis RaceNet (page Importer des résultats).
           </p>
         </section>
 
