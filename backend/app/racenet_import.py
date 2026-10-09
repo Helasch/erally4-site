@@ -40,7 +40,9 @@ class DriverPlan:
     entry: Entry
     driver: Driver | None
     # known : déjà reconnu · renamed : a changé de pseudo · attach : pilote existant, reconnu par son pseudo
-    # new : nouveau pilote · anonymous : « WRC Player » inconnu, à identifier · conflict : pseudo déjà pris
+    # new : nouveau pilote · anonymous : « WRC Player » inconnu, à identifier
+    # taken : pseudo déjà associé à un autre identifiant RaceNet (changement de compte EA ?), à confirmer
+    # conflict : a changé de pseudo pour un pseudo déjà pris par un autre pilote du site
     action: str
 
 
@@ -71,8 +73,8 @@ def plan_drivers(db: Session, event: ParsedEvent) -> dict[str, DriverPlan]:
             elif existing.racenet_id is None:
                 plans[key] = DriverPlan(entry, existing, "attach")
             else:
-                # Pseudo repris par un autre joueur RaceNet : à identifier à la main
-                plans[key] = DriverPlan(entry, None, "anonymous")
+                # Même pseudo, autre identifiant RaceNet : l'admin confirme s'il s'agit du même pilote
+                plans[key] = DriverPlan(entry, existing, "taken")
     return plans
 
 
@@ -87,10 +89,12 @@ def _apply_plans(db: Session, plans: dict[str, DriverPlan], resolutions: dict[st
         elif plan.action == "new":
             driver = get_or_create_driver(db, plan.entry.name)
             driver.racenet_id = key
-        elif plan.action == "anonymous":
+        elif plan.action in ("anonymous", "taken"):
             name = (resolutions.get(key) or "").strip()
             driver = get_or_create_driver(db, name) if name else None
-            if driver is not None and driver.racenet_id is None:
+            # Confirmer le pilote du même pseudo lui réattribue l'identifiant RaceNet
+            confirmed = plan.action == "taken" and driver is not None and driver.id == plan.driver.id
+            if driver is not None and (driver.racenet_id is None or confirmed):
                 driver.racenet_id = key
         drivers[key] = driver
         db.flush()
@@ -175,13 +179,20 @@ def build_racenet_preview(
     history = _rally_history(db, championship, rally.id if rally else None)
     names_in_event = {e.name for e in event.drivers().values() if not e.is_anonymous}
 
-    def anonymous(plan: DriverPlan) -> dict:
+    def to_identify(plan: DriverPlan) -> dict:
         e = plan.entry
+        if plan.action == "taken":
+            # Le pilote du site qui porte ce pseudo est la suggestion évidente
+            suggestions = [{"driver_id": plan.driver.id, "name": plan.driver.name, "reason": "même pseudo"}]
+        else:
+            suggestions = [s.__dict__ for s in suggest_for_rally(e.vehicle, e.platform, history, names_in_event)]
         return {
             "racenet_id": e.racenet_id,
+            "name": None if e.is_anonymous else e.name,
+            "reason": plan.action,
             "vehicle": e.vehicle,
             "platform": e.platform,
-            "suggestions": [s.__dict__ for s in suggest_for_rally(e.vehicle, e.platform, history, names_in_event)],
+            "suggestions": suggestions,
         }
 
     stages = []
@@ -236,7 +247,7 @@ def build_racenet_preview(
             "new": sorted(p.entry.name for p in plans.values() if p.action == "new"),
             "renamed": [{"from": p.driver.name, "to": p.entry.name} for p in plans.values() if p.action == "renamed"],
             "attached": sum(1 for p in plans.values() if p.action == "attach"),
-            "anonymous": [anonymous(p) for p in plans.values() if p.action == "anonymous"],
+            "anonymous": [to_identify(p) for p in plans.values() if p.action in ("anonymous", "taken")],
         },
         "warnings": warnings,
     }

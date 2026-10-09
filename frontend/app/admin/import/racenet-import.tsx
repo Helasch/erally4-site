@@ -36,7 +36,14 @@ type Preview = {
     new: string[];
     renamed: { from: string; to: string }[];
     attached: number;
-    anonymous: { racenet_id: string; vehicle: string; platform: string; suggestions: Suggestion[] }[];
+    anonymous: {
+      racenet_id: string;
+      name: string | null;
+      reason: "anonymous" | "taken";
+      vehicle: string;
+      platform: string;
+      suggestions: Suggestion[];
+    }[];
   };
   warnings: string[];
 };
@@ -337,13 +344,25 @@ export function RacenetImport({
               )}
               {preview.drivers.anonymous.map((a) => (
                 <div key={a.racenet_id} className="anonymous-row">
-                  <span className="muted">
-                    Pilote masqué · {a.vehicle} · {a.platform}
+                  <span>
+                    {a.reason === "taken" ? (
+                      <>
+                        <strong>{a.name}</strong>{" "}
+                        <span className="muted">
+                          · ce pseudo est associé à un autre compte RaceNet sur le site (changement de compte EA ?).
+                          Confirmez le pilote ou videz le champ.
+                        </span>
+                      </>
+                    ) : (
+                      <span className="muted">
+                        Pilote masqué · {a.vehicle} · {a.platform}
+                      </span>
+                    )}
                   </span>
                   <DriverInput
                     value={resolutions[a.racenet_id] ?? ""}
                     onChange={(v) => setResolutions({ ...resolutions, [a.racenet_id]: v })}
-                    placeholder="Qui est-ce ? (facultatif)"
+                    placeholder="Qui est-ce ?"
                   />
                   {a.suggestions.length > 0 && (
                     <div className="suggestions">
@@ -406,7 +425,7 @@ export function RacenetImport({
               </thead>
               <tbody>
                 {overall?.map((r) => (
-                  <tr key={r.racenet_id} className={r.status === "anonymous" ? "anonymous" : ""}>
+                  <tr key={r.racenet_id} className={r.status === "anonymous" || r.status === "taken" ? "anonymous" : ""}>
                     <td className="pos">{r.position}</td>
                     <td>{nameCell(r)}</td>
                     <td className="muted">{r.vehicle}</td>
