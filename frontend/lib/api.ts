@@ -61,6 +61,7 @@ export type StandingRow = {
   is_new?: boolean;
   adjustment?: number;
   adjustment_reasons?: string[];
+  stage_wins?: number;
 };
 
 export type Standings = {
@@ -73,6 +74,8 @@ export type Standings = {
   after: { id: number; name: string; round: number } | null;
   previous: { id: number; name: string; round: number } | null;
   unidentified: number;
+  /** Au moins un rallye du championnat a ses spéciales importées */
+  has_stages?: boolean;
   standings: StandingRow[];
 };
 
@@ -92,7 +95,37 @@ export type RallyResultRow = {
   penalty_s: number;
   disqualified: boolean;
   penalty_reason: string | null;
+  /** Rang et temps sur chaque spéciale (vide si les spéciales ne sont pas importées) */
+  stages?: StageSplit[];
 };
+
+export type StageSplit = { number: number; position: number; time: string; abandoned: boolean };
+
+export type StageSummary = {
+  number: number;
+  name: string;
+  distance_km: number | null;
+  conditions: string | null;
+  time_of_day: string | null;
+  entrants: number;
+  winner: { name: string; driver_id: number | null; identified: boolean; vehicle: string; time: string } | null;
+};
+
+export type StageResultRow = {
+  id: number;
+  position: number;
+  name: string;
+  driver_id: number | null;
+  identified: boolean;
+  vehicle: string;
+  platform: string;
+  time: string;
+  diff: string | null;
+  penalty_s: number;
+  abandoned: boolean;
+};
+
+export type StageDetail = StageSummary & { results: StageResultRow[] };
 
 export type RallyDetail = {
   id: number;
@@ -103,6 +136,7 @@ export type RallyDetail = {
   status: RallyStatus;
   championship: { id: number; name: string; mode: "racenet" | "custom" };
   rallies: RallySummary[];
+  stages?: StageSummary[];
   results: RallyResultRow[];
 };
 
@@ -180,6 +214,7 @@ export type DriverListItem = {
   wins: number;
   podiums: number;
   best: number | null;
+  stage_wins?: number;
   platform: string | null;
   vehicle: string | null;
 };
@@ -192,6 +227,7 @@ export type DriverStats = {
   best: number | null;
   average_position: number | null;
   average_gap_ms: number | null;
+  stage_wins?: number;
 };
 
 export type DriverProfile = {

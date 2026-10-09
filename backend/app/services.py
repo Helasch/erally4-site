@@ -25,6 +25,8 @@ from app.models import (
     Rally,
     RallyResult,
     SiteSetting,
+    Stage,
+    StageResult,
     StandingAdjustment,
 )
 from app.rally_status import compute_statuses, now_paris
@@ -129,6 +131,7 @@ def _penalty_info(r: RallyResult) -> dict:
 
 
 def rally_results_payload(rally: Rally, scoring: dict[int, int] | None) -> list[dict]:
+    splits = stage_splits(rally)
     payload = []
     for r, c in classified_results(rally):
         payload.append(
@@ -146,6 +149,8 @@ def rally_results_payload(rally: Rally, scoring: dict[int, int] | None) -> list[
                 "diff_prev": format_time_ms(c.diff_prev_ms) if c.diff_prev_ms is not None else None,
                 "points": (scoring.get(c.position, 0) if c.position else 0) if scoring is not None else None,
                 **_penalty_info(r),
+                # Rang et temps sur chaque spéciale
+                "stages": splits.get(("driver", r.driver_id) if r.driver_id is not None else ("name", r.raw_name), []),
             }
         )
     return payload
@@ -282,6 +287,7 @@ def championship_standings(db: Session, championship: Championship, after_rally_
         "mode": championship.scoring_mode,
         "rallies": [{"id": r.id, "name": r.name, "round": i + 1} for i, r in enumerate(rallies)],
         "snapshots": [_rally_ref(s.rally, rallies) for s in snapshots if s.rally is not None],
+        "has_stages": has_stages(db, championship),
     }
     if not snapshots:
         return {**base, "after": None, "previous": None, "unidentified": 0, "standings": []}
@@ -298,8 +304,15 @@ def championship_standings(db: Session, championship: Championship, after_rally_
         [(e["driver_id"], e["position"], e["points"]) for e in current.entries],
         [(e["driver_id"], e["position"], e["points"]) for e in previous.entries] if previous else None,
     )
+    wins = stage_wins(db, championship)
     standings = [
-        {**entry, "evol": move.evol, "gained": move.gained, "is_new": move.is_new}
+        {
+            **entry,
+            "evol": move.evol,
+            "gained": move.gained,
+            "is_new": move.is_new,
+            "stage_wins": wins.get(entry["driver_id"], 0) if entry["driver_id"] is not None else 0,
+        }
         for entry, move in zip(current.entries, moves)
     ]
     return {
@@ -376,6 +389,96 @@ def home_payload(db: Session, championship: Championship) -> dict:
             ),
         },
     }
+
+
+# --- Spéciales -------------------------------------------------------------------
+
+
+def stage_abandoned(result: StageResult) -> bool:
+    """Temps maximum attribué par RaceNet (abandon ou spéciale non terminée) : la pénalité couvre tout le temps."""
+    return result.time_ms > 0 and (result.penalty_ms or 0) >= result.time_ms
+
+
+def _stage_driver(result: StageResult) -> dict:
+    return {
+        "name": display_name(result.driver, result.raw_name),
+        "driver_id": result.driver_id,
+        "identified": result.driver_id is not None,
+    }
+
+
+def stage_summary(stage: Stage) -> dict:
+    winner = stage.results[0] if stage.results else None
+    return {
+        "number": stage.number,
+        "name": stage.name,
+        "distance_km": stage.distance_km,
+        "conditions": stage.conditions,
+        "time_of_day": stage.time_of_day,
+        "entrants": len(stage.results),
+        "winner": {**_stage_driver(winner), "vehicle": winner.vehicle, "time": format_time_ms(winner.time_ms)}
+        if winner
+        else None,
+    }
+
+
+def stage_results_payload(stage: Stage) -> list[dict]:
+    return [
+        {
+            "id": r.id,
+            "position": r.position,
+            **_stage_driver(r),
+            "vehicle": r.vehicle,
+            "platform": r.platform,
+            "time": format_time_ms(r.time_ms),
+            "diff": format_time_ms(r.diff_ms) if r.position > 1 else None,
+            "penalty_s": round((r.penalty_ms or 0) / 1000, 3),
+            "abandoned": stage_abandoned(r),
+        }
+        for r in stage.results
+    ]
+
+
+def stage_splits(rally: Rally) -> dict[tuple, list[dict]]:
+    """Parcours de chaque pilote sur les spéciales du rallye, indexé par pilote (ou pseudo s'il n'est pas identifié)."""
+    splits: dict[tuple, list[dict]] = defaultdict(list)
+    for stage in rally.stages:
+        for r in stage.results:
+            key = ("driver", r.driver_id) if r.driver_id is not None else ("name", r.raw_name)
+            splits[key].append(
+                {
+                    "number": stage.number,
+                    "position": r.position,
+                    "time": format_time_ms(r.time_ms),
+                    "abandoned": stage_abandoned(r),
+                }
+            )
+    return splits
+
+
+def stage_wins(db: Session, championship: Championship) -> Counter:
+    """Nombre de spéciales gagnées par pilote dans le championnat."""
+    return Counter(
+        db.scalars(
+            select(StageResult.driver_id)
+            .join(Stage, StageResult.stage_id == Stage.id)
+            .join(Rally, Stage.rally_id == Rally.id)
+            .where(
+                Rally.championship_id == championship.id,
+                StageResult.position == 1,
+                StageResult.driver_id.is_not(None),
+            )
+        )
+    )
+
+
+def has_stages(db: Session, championship: Championship) -> bool:
+    return (
+        db.scalar(
+            select(Stage.id).join(Rally, Stage.rally_id == Rally.id).where(Rally.championship_id == championship.id).limit(1)
+        )
+        is not None
+    )
 
 
 # --- Import : aperçu ---------------------------------------------------------------
@@ -740,6 +843,7 @@ def drivers_overview(db: Session, championship: Championship) -> list[dict]:
     standings = {e["driver_id"]: e for e in championship_standings(db, championship)["standings"] if e["driver_id"]}
     results = _driver_results(championship)
     ids = set(standings) | set(results)
+    wins = stage_wins(db, championship)
     drivers = {d.id: d for d in db.scalars(select(Driver).where(Driver.id.in_(ids)))} if ids else {}
 
     rows = []
@@ -758,6 +862,7 @@ def drivers_overview(db: Session, championship: Championship) -> list[dict]:
                 "wins": stats.wins,
                 "podiums": stats.podiums,
                 "best": stats.best,
+                "stage_wins": wins.get(driver_id, 0),
                 "platform": _most_common([r.platform for _, _, r, _ in mine]),
                 "vehicle": (driver.account.vehicle if driver.account and driver.account.vehicle else None)
                 or _most_common([r.vehicle for _, _, r, _ in mine]),
@@ -807,7 +912,7 @@ def driver_profile(db: Session, driver: Driver, championship: Championship | Non
             "points": standing["points"] if standing else None,
             "adjustment_reasons": standing.get("adjustment_reasons", []) if standing else [],
             "classified": len(current),
-            "stats": stats.__dict__,
+            "stats": {**stats.__dict__, "stage_wins": stage_wins(db, championship).get(driver.id, 0)},
             "progression": progression,
             "history": [
                 {

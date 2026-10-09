@@ -9,16 +9,18 @@ import {
   type Championship,
   type ChampionshipListItem,
   type RallyDetail,
+  type StageDetail,
   type Standings,
 } from "@/lib/api";
 import { shortRallyName } from "@/lib/format";
 import NavSelect from "../nav-select";
 import PageHeader from "../page-header";
-import { RallyTable, StandingsTable } from "./tables";
+import { StageHeader, StageTabs, StageWinners } from "./stages";
+import { RallyTable, StageTable, StandingsTable } from "./tables";
 
 export const dynamic = "force-dynamic";
 
-type Search = { saison?: string; rallye?: string; apres?: string };
+type Search = { saison?: string; rallye?: string; apres?: string; es?: string };
 
 const isId = (v?: string) => !!v && /^\d+$/.test(v);
 
@@ -77,7 +79,7 @@ export default async function ClassementsPage({ searchParams }: { searchParams: 
           {rallyId === null ? (
             <ChampionshipView championship={championship} search={search} keep={keep} />
           ) : (
-            <RallyView rallyId={rallyId} />
+            <RallyView rallyId={rallyId} es={isId(search.es) ? Number(search.es) : null} keep={keep} />
           )}
         </div>
       </section>
@@ -155,6 +157,7 @@ async function ChampionshipView({
           <StandingsTable
             rows={rows}
             gainedLabel={standings.previous && after ? `+ ${shortRallyName(after.name)}` : null}
+            showStageWins={standings.has_stages}
           />
         </>
       )}
@@ -162,9 +165,11 @@ async function ChampionshipView({
   );
 }
 
-async function RallyView({ rallyId }: { rallyId: number }) {
+async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | null; keep: Search }) {
   const rally = await apiGet<RallyDetail>(`/api/rallies/${rallyId}`);
-  const podium = rally.results.filter((r) => r.position !== null).slice(0, 3);
+  const stages = rally.stages ?? [];
+  if (es !== null && !stages.some((s) => s.number === es)) notFound();
+  const stageHref = (n: number | null) => href(keep, { rallye: String(rallyId), es: n === null ? undefined : String(n) });
 
   return (
     <>
@@ -174,31 +179,60 @@ async function RallyView({ rallyId }: { rallyId: number }) {
         </p>
       </div>
 
-      {rally.results.length === 0 ? (
+      {stages.length > 0 && <StageTabs stages={stages} current={es} hrefFor={stageHref} />}
+
+      {es !== null ? (
+        <StageView rallyId={rallyId} es={es} count={stages.length} hrefFor={stageHref} />
+      ) : rally.results.length === 0 ? (
         <p className="card-block empty">Résultats pas encore publiés.</p>
       ) : (
         <>
           <ol className="leader-cards">
-            {podium.map((r, i) => (
-              <li key={r.id} className={i === 0 ? "first" : ""}>
-                <span className="leader-pos">{r.position}</span>
-                <span className="leader-body">
-                  <span className="leader-name">
-                    {r.driver_id !== null ? <Link href={`/pilotes/${r.driver_id}`}>{r.name}</Link> : r.name}
+            {rally.results
+              .filter((r) => r.position !== null)
+              .slice(0, 3)
+              .map((r, i) => (
+                <li key={r.id} className={i === 0 ? "first" : ""}>
+                  <span className="leader-pos">{r.position}</span>
+                  <span className="leader-body">
+                    <span className="leader-name">
+                      {r.driver_id !== null ? <Link href={`/pilotes/${r.driver_id}`}>{r.name}</Link> : r.name}
+                    </span>
+                    <strong>{i === 0 || !r.diff ? formatTime(r.time) : formatDiff(r.diff)}</strong>
+                    <small>{r.vehicle}</small>
                   </span>
-                  <strong>{i === 0 || !r.diff ? formatTime(r.time) : formatDiff(r.diff)}</strong>
-                  <small>{r.vehicle}</small>
-                </span>
-              </li>
-            ))}
+                </li>
+              ))}
           </ol>
+          {stages.length > 0 && <StageWinners stages={stages} hrefFor={stageHref} />}
           <RallyTable
             rows={rally.results}
             title={shortRallyName(rally.name)}
             showPoints={rally.championship.mode === "custom"}
+            stages={stages}
           />
         </>
       )}
+    </>
+  );
+}
+
+async function StageView({
+  rallyId,
+  es,
+  count,
+  hrefFor,
+}: {
+  rallyId: number;
+  es: number;
+  count: number;
+  hrefFor: (n: number) => string;
+}) {
+  const stage = await apiGet<StageDetail>(`/api/rallies/${rallyId}/stages/${es}`);
+  return (
+    <>
+      <StageHeader stage={stage} count={count} hrefFor={hrefFor} />
+      <StageTable rows={stage.results} title={`ES${stage.number}`} />
     </>
   );
 }

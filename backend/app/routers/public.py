@@ -19,6 +19,8 @@ from app.services import (
     rally_results_payload,
     read_settings,
     scoring_table,
+    stage_results_payload,
+    stage_summary,
 )
 
 router = APIRouter(prefix="/api")
@@ -120,8 +122,18 @@ def rally(rally_id: int, db: Session = Depends(get_db)):
         "status": statuses[r.id],
         "championship": {"id": c.id, "name": c.name, "mode": c.scoring_mode},
         "rallies": siblings,
+        "stages": [stage_summary(s) for s in r.stages],
         "results": rally_results_payload(r, scoring),
     }
+
+
+@router.get("/rallies/{rally_id}/stages/{number}")
+def rally_stage(rally_id: int, number: int, db: Session = Depends(get_db)):
+    r = get_rally(db, rally_id)
+    stage = next((s for s in r.stages if s.number == number), None)
+    if stage is None:
+        raise not_found("Spéciale")
+    return {**stage_summary(stage), "results": stage_results_payload(stage)}
 
 
 def _season(db: Session, saison: int | None) -> Championship | None:

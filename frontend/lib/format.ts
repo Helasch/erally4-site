@@ -112,3 +112,66 @@ export function statusLabel(status: RallyStatus): { text: string; kind: string }
       return { text: "À venir", kind: "todo" };
   }
 }
+
+// --- Spéciales (libellés RaceNet en anglais, traduits quand on les connaît) ----------
+
+const WEATHER: Record<string, string> = {
+  clear: "Dégagé",
+  sunny: "Ensoleillé",
+  overcast: "Couvert",
+  cloudy: "Nuageux",
+  "light cloud": "Peu nuageux",
+  "heavy cloud": "Très nuageux",
+  rain: "Pluie",
+  "light rain": "Pluie fine",
+  "heavy rain": "Forte pluie",
+  fog: "Brouillard",
+  foggy: "Brouillard",
+  snow: "Neige",
+  "light snow": "Neige légère",
+  "heavy snow": "Forte neige",
+  storm: "Orage",
+};
+
+const SURFACE: Record<string, string> = {
+  dry: "sec",
+  damp: "humide",
+  wet: "mouillé",
+  ice: "verglas",
+  icy: "verglas",
+  snow: "neige",
+  mud: "boue",
+  flooded: "inondé",
+};
+
+const TIME_OF_DAY: Record<string, string> = {
+  night: "Nuit",
+  day: "Jour",
+  morning: "Matin",
+  midday: "Midi",
+  afternoon: "Après-midi",
+  evening: "Soir",
+  dusk: "Crépuscule",
+  dawn: "Aube",
+  sunrise: "Lever du soleil",
+  sunset: "Coucher du soleil",
+};
+
+const translate = (table: Record<string, string>, value: string) => table[value.trim().toLowerCase()] ?? value.trim();
+
+/** « Overcast (Ice) » + « Night » → « Couvert · verglas · Nuit » */
+export function stageConditions(conditions: string | null, timeOfDay: string | null): string {
+  const parts: string[] = [];
+  if (conditions) {
+    const match = conditions.match(/^(.*?)\s*\((.*)\)\s*$/);
+    if (match) parts.push(translate(WEATHER, match[1]), translate(SURFACE, match[2]));
+    else parts.push(translate(WEATHER, conditions));
+  }
+  if (timeOfDay) parts.push(translate(TIME_OF_DAY, timeOfDay));
+  return parts.join(" · ");
+}
+
+/** 18.5 → « 18,5 km » */
+export function formatKm(km: number | null): string | null {
+  return km === null ? null : `${km.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} km`;
+}
