@@ -5,6 +5,7 @@ from sqlalchemy import (
     Boolean,
     DateTime,
     Enum,
+    Float,
     ForeignKey,
     Integer,
     String,
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.db import Base
 
 SCORING_MODES = ("racenet", "custom")
-IMPORT_KINDS = ("rally", "championship")
+IMPORT_KINDS = ("rally", "championship", "racenet")
 
 
 class Admin(Base):
@@ -51,6 +52,8 @@ class Championship(Base):
     name: Mapped[str] = mapped_column(String(120))
     is_current: Mapped[bool] = mapped_column(Boolean, default=False)
     scoring_mode: Mapped[str] = mapped_column(Enum(*SCORING_MODES, name="scoring_mode"), default="racenet")
+    # Identifiant du championnat de club sur RaceNet (renseigné par l'import RaceNet)
+    racenet_id: Mapped[str | None] = mapped_column(String(32))
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     rallies: Mapped[list["Rally"]] = relationship(
@@ -83,10 +86,15 @@ class Rally(Base):
     # Début et fin du rallye, en heure de Paris (sans fuseau)
     starts_at: Mapped[datetime | None] = mapped_column(DateTime)
     ends_at: Mapped[datetime | None] = mapped_column(DateTime)
+    # Épreuve RaceNet correspondante (renseignée par l'import RaceNet)
+    racenet_event_id: Mapped[str | None] = mapped_column(String(32))
 
     championship: Mapped[Championship] = relationship(back_populates="rallies")
     results: Mapped[list["RallyResult"]] = relationship(
         order_by="RallyResult.position", cascade="all, delete-orphan"
+    )
+    stages: Mapped[list["Stage"]] = relationship(
+        back_populates="rally", order_by="Stage.number", cascade="all, delete-orphan"
     )
 
 
@@ -95,6 +103,8 @@ class Driver(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(64), unique=True)
+    # Identifiant RaceNet permanent du joueur (wrcPlayerId), connu grâce à l'import RaceNet
+    racenet_id: Mapped[str | None] = mapped_column(String(32), unique=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     account: Mapped["PilotAccount | None"] = relationship(back_populates="driver", uselist=False)
@@ -117,6 +127,45 @@ class RallyResult(Base):
     penalty_ms: Mapped[int] = mapped_column(BigInteger, default=0)
     disqualified: Mapped[bool] = mapped_column(Boolean, default=False)
     penalty_reason: Mapped[str | None] = mapped_column(String(255))
+
+    driver: Mapped[Driver | None] = relationship()
+
+
+class Stage(Base):
+    """Spéciale d'un rallye (importée depuis RaceNet)."""
+
+    __tablename__ = "stages"
+    __table_args__ = (UniqueConstraint("rally_id", "number"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    rally_id: Mapped[int] = mapped_column(ForeignKey("rallies.id", ondelete="CASCADE"))
+    number: Mapped[int] = mapped_column(Integer)
+    name: Mapped[str] = mapped_column(String(120))
+    distance_km: Mapped[float | None] = mapped_column(Float)
+    # Météo et surface telles que décrites par RaceNet (ex. « Overcast (Ice) »)
+    conditions: Mapped[str | None] = mapped_column(String(64))
+    time_of_day: Mapped[str | None] = mapped_column(String(32))
+
+    rally: Mapped[Rally] = relationship(back_populates="stages")
+    results: Mapped[list["StageResult"]] = relationship(
+        order_by="StageResult.position", cascade="all, delete-orphan"
+    )
+
+
+class StageResult(Base):
+    __tablename__ = "stage_results"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    stage_id: Mapped[int] = mapped_column(ForeignKey("stages.id", ondelete="CASCADE"))
+    position: Mapped[int] = mapped_column(Integer)
+    driver_id: Mapped[int | None] = mapped_column(ForeignKey("drivers.id", ondelete="SET NULL"))
+    raw_name: Mapped[str] = mapped_column(String(64))
+    vehicle: Mapped[str] = mapped_column(String(64))
+    platform: Mapped[str] = mapped_column(String(16))
+    # Temps de la spéciale, pénalité RaceNet comprise (coupe, dégâts, abandon…)
+    time_ms: Mapped[int] = mapped_column(BigInteger)
+    penalty_ms: Mapped[int] = mapped_column(BigInteger, default=0)
+    diff_ms: Mapped[int] = mapped_column(BigInteger)
 
     driver: Mapped[Driver | None] = relationship()
 

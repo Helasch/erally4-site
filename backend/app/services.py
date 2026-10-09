@@ -516,6 +516,64 @@ def _resolve_driver(db: Session, row_name: str, line: int, resolutions: dict[int
     return get_or_create_driver(db, resolved) if resolved else None
 
 
+def replace_rally_results(
+    db: Session, rally: Rally, rows: list[tuple[int, Driver | None, str, str, int, int, str]]
+) -> None:
+    """Remplace les résultats du rallye. `rows` : (position, pilote, pseudo brut, voiture, temps, écart, plateforme).
+
+    Les pénalités déjà décidées sont conservées pour le même pilote lors d'une réimport.
+    """
+    kept = {
+        r.driver_id: (r.penalty_ms, r.disqualified, r.penalty_reason)
+        for r in rally.results
+        if r.driver_id is not None and (r.penalty_ms or r.disqualified)
+    }
+    db.execute(delete(RallyResult).where(RallyResult.rally_id == rally.id))
+    for position, driver, raw_name, vehicle, time_ms, diff_ms, platform in rows:
+        penalty_ms, disqualified, reason = kept.get(driver.id if driver else None, (0, False, None))
+        db.add(
+            RallyResult(
+                penalty_ms=penalty_ms,
+                disqualified=disqualified,
+                penalty_reason=reason,
+                rally_id=rally.id,
+                position=position,
+                driver_id=driver.id if driver else None,
+                raw_name=raw_name,
+                vehicle=vehicle,
+                time_ms=time_ms,
+                diff_ms=diff_ms,
+                platform=platform,
+            )
+        )
+
+
+def replace_standings(
+    db: Session, championship: Championship, rally: Rally, rows: list[tuple[int, Driver | None, str, int]]
+) -> None:
+    """Remplace le classement RaceNet après ce rallye (et les anciens imports sans rallye associé).
+
+    `rows` : (position, pilote, pseudo brut, points).
+    """
+    db.execute(
+        delete(RacenetStanding).where(
+            RacenetStanding.championship_id == championship.id,
+            (RacenetStanding.rally_id == rally.id) | RacenetStanding.rally_id.is_(None),
+        )
+    )
+    for position, driver, raw_name, points in rows:
+        db.add(
+            RacenetStanding(
+                championship_id=championship.id,
+                rally_id=rally.id,
+                position=position,
+                driver_id=driver.id if driver else None,
+                raw_name=raw_name,
+                points=points,
+            )
+        )
+
+
 def commit_import(
     db: Session,
     championship: Championship,
@@ -538,51 +596,21 @@ def commit_import(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Ce rallye n'appartient pas au championnat.")
 
     if parsed.kind == "rally":
-        # Les pénalités déjà décidées sont conservées pour le même pilote lors d'une réimport
-        kept = {
-            r.driver_id: (r.penalty_ms, r.disqualified, r.penalty_reason)
-            for r in rally.results
-            if r.driver_id is not None and (r.penalty_ms or r.disqualified)
-        }
-        db.execute(delete(RallyResult).where(RallyResult.rally_id == rally.id))
-        for r in parsed.rows:
-            driver = _resolve_driver(db, r.name, r.line, resolutions)
-            penalty_ms, disqualified, reason = kept.get(driver.id if driver else None, (0, False, None))
-            db.add(
-                RallyResult(
-                    penalty_ms=penalty_ms,
-                    disqualified=disqualified,
-                    penalty_reason=reason,
-                    rally_id=rally.id,
-                    position=r.position,
-                    driver_id=driver.id if driver else None,
-                    raw_name=r.name,
-                    vehicle=r.vehicle,
-                    time_ms=r.time_ms,
-                    diff_ms=r.diff_ms,
-                    platform=r.platform,
-                )
-            )
-    else:
-        # Remplace le classement de ce rallye, et les anciens imports sans rallye associé
-        db.execute(
-            delete(RacenetStanding).where(
-                RacenetStanding.championship_id == championship.id,
-                (RacenetStanding.rally_id == rally.id) | RacenetStanding.rally_id.is_(None),
-            )
+        replace_rally_results(
+            db,
+            rally,
+            [
+                (r.position, _resolve_driver(db, r.name, r.line, resolutions), r.name, r.vehicle, r.time_ms, r.diff_ms, r.platform)
+                for r in parsed.rows
+            ],
         )
-        for r in parsed.rows:
-            driver = _resolve_driver(db, r.name, r.line, resolutions)
-            db.add(
-                RacenetStanding(
-                    championship_id=championship.id,
-                    rally_id=rally.id,
-                    position=r.position,
-                    driver_id=driver.id if driver else None,
-                    raw_name=r.name,
-                    points=r.points,
-                )
-            )
+    else:
+        replace_standings(
+            db,
+            championship,
+            rally,
+            [(r.position, _resolve_driver(db, r.name, r.line, resolutions), r.name, r.points) for r in parsed.rows],
+        )
 
     record = Import(
         kind=parsed.kind,
@@ -632,6 +660,10 @@ SETTINGS = {
     ),
     "site_url": SettingDef(
         lambda v: bool(_SITE_URL.match(v)), "Adresse du site invalide (ex. https://erally4.devnest.fr, sans / final)."
+    ),
+    "racenet_club_id": SettingDef(
+        lambda v: bool(re.fullmatch(r"\d{1,12}", v)),
+        "Identifiant de club RaceNet invalide (chiffres, visibles dans l'adresse de la page du club).",
     ),
 }
 

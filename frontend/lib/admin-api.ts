@@ -64,6 +64,8 @@ export type AdminRally = {
   ends_at: string | null;
   status: RallyStatus;
   result_count: number;
+  stage_count: number;
+  racenet_event_id: string | null;
   unidentified: number;
 };
 

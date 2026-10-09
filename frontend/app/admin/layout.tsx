@@ -48,7 +48,7 @@ function Icon({ name }: { name: keyof typeof icons }) {
 const NAV = [
   { href: "/admin", label: "Tableau de bord", icon: "dashboard", exact: true },
   { href: "/admin/championnats", label: "Championnats", icon: "trophy", match: ["/admin/championnats", "/admin/rallyes", "/admin/classement"] },
-  { href: "/admin/import", label: "Importer un CSV", icon: "upload" },
+  { href: "/admin/import", label: "Importer des résultats", icon: "upload" },
   { href: "/admin/pilotes", label: "Pilotes", icon: "users" },
   { href: "/admin/comptes", label: "Comptes pilotes", icon: "account" },
   { href: "/admin/parametres", label: "Paramètres", icon: "settings" },
@@ -75,7 +75,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
         setCsrf(data.csrf);
         setMe(data);
       })
-      .catch(() => router.replace("/admin/login"));
+      .catch(() => {
+        // Revenir sur la page demandée après la connexion (ex. import lancé depuis RaceNet)
+        const next = window.location.pathname + window.location.search;
+        router.replace(`/admin/login?next=${encodeURIComponent(next)}`);
+      });
   }, [isLogin, router]);
 
   // Referme le menu mobile après chaque navigation

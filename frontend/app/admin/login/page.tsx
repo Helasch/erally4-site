@@ -20,7 +20,9 @@ export default function LoginPage() {
         password: form.get("password"),
       });
       setCsrf(me.csrf);
-      router.replace("/admin");
+      // Retour à la page demandée avant la connexion, uniquement dans l'admin
+      const next = new URLSearchParams(window.location.search).get("next") ?? "";
+      router.replace(/^\/admin(\/|\?|$)/.test(next) && !next.startsWith("/admin/login") ? next : "/admin");
     } catch (err) {
       setError(errorMessage(err));
       setBusy(false);
