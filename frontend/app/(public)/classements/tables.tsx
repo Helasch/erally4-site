@@ -13,6 +13,7 @@ import {
   type StandingRow,
 } from "@/lib/api";
 import { movementLabel } from "@/lib/format";
+import { useMyDriverId } from "@/lib/use-my-driver";
 
 const TOP = 15;
 
@@ -24,6 +25,13 @@ function DriverName({ name, id }: { name: string; id: number | null }) {
   ) : (
     <span title="Pilote non identifié">{name}</span>
   );
+}
+
+/** Classes d'une ligne : pilote non identifié, et ligne du pilote connecté (repérée en couleur). */
+function rowClass(row: { identified: boolean; driver_id: number | null }, me: number | null, ...extra: string[]) {
+  return [row.identified ? "" : "unidentified", me !== null && row.driver_id === me ? "me" : "", ...extra]
+    .filter(Boolean)
+    .join(" ");
 }
 
 /** Recherche par pseudo + affichage du top 15 ou de tout le classement. */
@@ -101,6 +109,7 @@ export function StandingsTable({
   showStageWins?: boolean;
 }) {
   const f = useFiltered(rows);
+  const me = useMyDriverId();
   const meta = f.searching
     ? `${f.filtered.length} résultat${f.filtered.length > 1 ? "s" : ""}`
     : f.all || rows.length <= TOP
@@ -135,7 +144,7 @@ export function StandingsTable({
             {f.shown.map((s, i) => {
               const m = movementLabel({ evol: s.evol ?? null, is_new: s.is_new ?? false });
               return (
-                <tr key={s.id ?? `${s.driver_id}-${s.position}-${i}`} className={s.identified ? "" : "unidentified"}>
+                <tr key={s.id ?? `${s.driver_id}-${s.position}-${i}`} className={rowClass(s, me)}>
                   <td className={`pos pos-${s.position}`}>{s.position}</td>
                   <td>
                     <DriverName name={s.name} id={s.driver_id} />
@@ -176,6 +185,7 @@ export function RallyTable({
 }) {
   const f = useFiltered(rows);
   const [open, setOpen] = useState<Set<number>>(new Set());
+  const me = useMyDriverId();
   const expandable = stages.length > 0 && rows.some((r) => r.stages?.length);
   const columns = 8 + (showPoints ? 1 : 0);
   const meta = f.searching
@@ -220,7 +230,7 @@ export function RallyTable({
               return (
                 <Fragment key={r.id}>
                   <tr
-                    className={`${r.identified ? "" : "unidentified"}${isOpen ? " open" : ""}`}
+                    className={rowClass(r, me, isOpen ? "open" : "")}
                     onClick={canOpen ? (e) => toggle(r.id, e) : undefined}
                   >
                     <td className={`pos pos-${r.position ?? "nc"}`}>{r.position ?? "NC"}</td>
@@ -356,6 +366,7 @@ export function StageBoards({
 }) {
   const [query, setQuery] = useState("");
   const [all, setAll] = useState(false);
+  const me = useMyDriverId();
   const q = query.trim().toLowerCase();
   const pick = <T extends { name: string }>(rows: T[]) => {
     const filtered = q ? rows.filter((r) => r.name.toLowerCase().includes(q)) : rows;
@@ -382,7 +393,7 @@ export function StageBoards({
               <BoardHead timeLabel="Temps" />
               <tbody>
                 {stageRows.map((r) => (
-                  <tr key={r.id} className={`${r.identified ? "" : "unidentified"}${r.abandoned ? " abandoned" : ""}`}>
+                  <tr key={r.id} className={rowClass(r, me, r.abandoned ? "abandoned" : "")}>
                     <td className={`pos pos-${r.position}`}>{r.position}</td>
                     <td>
                       <BoardDriver row={r} />
@@ -423,7 +434,7 @@ export function StageBoards({
               <BoardHead timeLabel="Temps total" />
               <tbody>
                 {overallRows.map((r) => (
-                  <tr key={r.id} className={r.identified ? "" : "unidentified"}>
+                  <tr key={r.id} className={rowClass(r, me)}>
                     <td className={`pos pos-${r.position}`}>
                       {r.position}
                       <Evolution value={r.evol} />
