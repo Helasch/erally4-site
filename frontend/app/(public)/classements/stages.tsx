@@ -64,15 +64,12 @@ export function StageWinners({
   );
 }
 
-/** En-tête d'une spéciale. */
-export function StageHeader({ stage, count }: { stage: StageSummary; count: number }) {
-  const meta = [formatKm(stage.distance_km), stageConditions(stage.conditions, stage.time_of_day)].filter(Boolean);
+/** En-tête du classement affiché : rallye (général) ou spéciale. */
+export function ViewHeader({ kicker, title, meta }: { kicker: string; title: string; meta: string[] }) {
   return (
     <header className="stage-head">
-      <p className="stage-kicker">
-        Spéciale {stage.number} sur {count}
-      </p>
-      <h2>{stage.name}</h2>
+      <p className="stage-kicker">{kicker}</p>
+      <h2>{title}</h2>
       {meta.length > 0 && <p className="stage-meta">{meta.join(" · ")}</p>}
     </header>
   );
