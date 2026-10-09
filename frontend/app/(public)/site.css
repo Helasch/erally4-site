@@ -2566,42 +2566,6 @@
 
 /* --- Spéciales (vue rallye) --------------------------------------------------------- */
 
-/* Pastilles Général · ES1 · ES2… : défilement horizontal sur mobile */
-.site .stage-tabs {
-  display: flex;
-  gap: 6px;
-  margin: 0 0 20px;
-  padding-bottom: 2px;
-  overflow-x: auto;
-  scrollbar-width: none;
-}
-
-.site .stage-tabs a {
-  flex: none;
-  padding: 7px 16px;
-  border: 1px solid #d6d0cd;
-  border-radius: 999px;
-  background: #fff;
-  font-family: var(--s-display);
-  font-weight: 800;
-  font-size: 0.95rem;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
-  text-decoration: none;
-  color: var(--s-ink);
-}
-
-.site .stage-tabs a:hover {
-  border-color: var(--s-red);
-  color: var(--s-red-text);
-}
-
-.site .stage-tabs a.active {
-  border-color: var(--s-red);
-  background: var(--s-red);
-  color: #fff;
-}
-
 /* Bandeau des vainqueurs de spéciales */
 .site .stage-strip {
   margin: 0 0 24px;
@@ -2648,6 +2612,27 @@
   background: var(--s-tile);
 }
 
+/* Spéciale affichée */
+.site .stage-strip li.active a {
+  background: var(--s-red);
+  color: #fff;
+}
+
+.site .stage-strip li.active .strip-es,
+.site .stage-strip li.active .strip-meta {
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.site .back-link {
+  font-weight: 700;
+  text-decoration: none;
+  color: var(--s-red-text);
+}
+
+.site .back-link:hover {
+  text-decoration: underline;
+}
+
 .site .strip-es {
   font-family: var(--s-display);
   font-style: italic;
@@ -2685,11 +2670,6 @@
 
 /* En-tête d'une spéciale */
 .site .stage-head {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: flex-end;
-  justify-content: space-between;
-  gap: 12px;
   margin: 0 0 16px;
 }
 
@@ -2713,24 +2693,6 @@
 .site .stage-meta {
   margin: 0;
   color: var(--s-muted);
-}
-
-.site .stage-arrows {
-  display: flex;
-  gap: 8px;
-}
-
-.site .stage-arrows a {
-  padding: 6px 12px;
-  border: 1px solid #d6d0cd;
-  background: #fff;
-  font-weight: 700;
-  text-decoration: none;
-}
-
-.site .stage-arrows a:hover {
-  border-color: var(--s-red);
-  color: var(--s-red-text);
 }
 
 /* Lignes dépliables : parcours du pilote sur les spéciales */

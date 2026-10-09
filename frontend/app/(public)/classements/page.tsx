@@ -15,7 +15,7 @@ import {
 import { shortRallyName } from "@/lib/format";
 import NavSelect from "../nav-select";
 import PageHeader from "../page-header";
-import { StageHeader, StageTabs, StageWinners } from "./stages";
+import { StageHeader, StageWinners } from "./stages";
 import { RallyTable, StageTable, StandingsTable } from "./tables";
 
 export const dynamic = "force-dynamic";
@@ -169,7 +169,8 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
   const rally = await apiGet<RallyDetail>(`/api/rallies/${rallyId}`);
   const stages = rally.stages ?? [];
   if (es !== null && !stages.some((s) => s.number === es)) notFound();
-  const stageHref = (n: number | null) => href(keep, { rallye: String(rallyId), es: n === null ? undefined : String(n) });
+  const rallyHref = href(keep, { rallye: String(rallyId) });
+  const stageHref = (n: number) => href(keep, { rallye: String(rallyId), es: String(n) });
 
   return (
     <>
@@ -177,12 +178,18 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
         <p className="view-label">
           Résultats · manche {rally.round} · {rally.name}
         </p>
+        {es !== null && (
+          <Link href={rallyHref} className="back-link" scroll={false}>
+            ‹ Classement général du rallye
+          </Link>
+        )}
       </div>
 
-      {stages.length > 0 && <StageTabs stages={stages} current={es} hrefFor={stageHref} />}
-
       {es !== null ? (
-        <StageView rallyId={rallyId} es={es} count={stages.length} hrefFor={stageHref} />
+        <>
+          <StageWinners stages={stages} current={es} hrefFor={stageHref} />
+          <StageView rallyId={rallyId} es={es} count={stages.length} />
+        </>
       ) : rally.results.length === 0 ? (
         <p className="card-block empty">Résultats pas encore publiés.</p>
       ) : (
@@ -217,22 +224,12 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
   );
 }
 
-async function StageView({
-  rallyId,
-  es,
-  count,
-  hrefFor,
-}: {
-  rallyId: number;
-  es: number;
-  count: number;
-  hrefFor: (n: number) => string;
-}) {
+async function StageView({ rallyId, es, count }: { rallyId: number; es: number; count: number }) {
   const stage = await apiGet<StageDetail>(`/api/rallies/${rallyId}/stages/${es}`);
   return (
     <>
-      <StageHeader stage={stage} count={count} hrefFor={hrefFor} />
-      <StageTable rows={stage.results} title={`ES${stage.number}`} />
+      <StageHeader stage={stage} count={count} />
+      <StageTable rows={stage.results} title="Classement de la spéciale" />
     </>
   );
 }
