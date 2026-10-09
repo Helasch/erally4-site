@@ -27,8 +27,11 @@ def test_bounds_are_inclusive():
     assert compute_statuses([(d(12), d(13, 17, 59), False)], NOW) == ["done_pending"]
 
 
-def test_results_mean_done_even_before_end_date():
-    assert compute_statuses([(d(12), d(15), True)], NOW) == ["done"]
+def test_results_during_rally_stay_live():
+    # Résultats provisoires importés depuis RaceNet pendant le rallye
+    assert compute_statuses([(d(12), d(15), True)], NOW) == ["live"]
+    # Sans date de fin, des résultats signifient que le rallye est terminé
+    assert compute_statuses([(d(12), None, True)], NOW) == ["done"]
 
 
 def test_without_dates_first_rally_without_results_is_next():

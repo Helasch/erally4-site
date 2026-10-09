@@ -29,7 +29,12 @@ export default async function PublicLayout({ children }: { children: ReactNode }
         <div className="ticker">
           <div className="ticker-inner">
             <span className="ticker-label">
-              <span className="ticker-label-full">Dernier résultat · </span>
+              {last.status === "live" && <span className="live-dot" aria-hidden="true" />}
+              {last.status === "live" ? (
+                <span className="ticker-label-full ticker-live">En direct · </span>
+              ) : (
+                <span className="ticker-label-full">Dernier résultat · </span>
+              )}
               {shortRallyName(last.name)}
             </span>
             <ol className="ticker-podium">
@@ -40,7 +45,7 @@ export default async function PublicLayout({ children }: { children: ReactNode }
                 </li>
               ))}
             </ol>
-            <Link href="/classements" className="ticker-link">
+            <Link href={`/classements?rallye=${last.id}`} className="ticker-link">
               Voir les classements →
             </Link>
           </div>

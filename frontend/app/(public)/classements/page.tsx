@@ -66,9 +66,10 @@ export default async function ClassementsPage({ searchParams }: { searchParams: 
             <Link
               key={r.id}
               href={href(keep, { rallye: String(r.id) })}
-              className={rallyId === r.id ? "active" : ""}
+              className={`${rallyId === r.id ? "active" : ""}${r.status === "live" ? " tab-live" : ""}`}
             >
               {shortRallyName(r.name)}
+              {r.status === "live" && <span className="live-dot" title="En cours" />}
             </Link>
           ))}
         </nav>
@@ -171,6 +172,7 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
   if (es !== null && !stages.some((s) => s.number === es)) notFound();
   const stageHref = (n: number) => href(keep, { rallye: String(rallyId), es: String(n) });
   const podium = rally.results.filter((r) => r.position !== null).slice(0, 3);
+  const live = rally.status === "live";
   const totalKm = stages.reduce((sum, s) => sum + (s.distance_km ?? 0), 0);
   const rallyMeta = [
     formatRallyDates(rally.starts_at, rally.ends_at),
@@ -184,7 +186,14 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
         <p className="view-label">
           Résultats · manche {rally.round} · {rally.name}
         </p>
+        {live && <span className="cal-status live">En cours</span>}
       </div>
+
+      {live && (
+        <p className="live-note">
+          Rallye en cours : les classements sont provisoires et évoluent à chaque mise à jour des résultats.
+        </p>
+      )}
 
       {rally.results.length === 0 && es === null ? (
         <p className="card-block empty">Résultats pas encore publiés.</p>
@@ -213,6 +222,7 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
               current={es}
               hrefFor={stageHref}
               finalHref={href(keep, { rallye: String(rallyId) })}
+              finalLabel={live ? "Général" : "Final"}
             />
           )}
           {es !== null ? (
@@ -222,7 +232,7 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
               <ViewHeader kicker={`Manche ${rally.round}`} title={rally.name} meta={rallyMeta} />
               <RallyTable
                 rows={rally.results}
-                title="Classement final"
+                title={live ? "Classement provisoire" : "Classement final"}
                 showPoints={rally.championship.mode === "custom"}
                 stages={stages}
               />

@@ -21,12 +21,15 @@ def compute_statuses(
     """Statut de chaque rallye, donnés dans l'ordre du calendrier : (début, fin, résultats importés)."""
     statuses = []
     for starts_at, ends_at, has_results in rallies:
-        if has_results:
+        started = starts_at is not None and starts_at <= now
+        # Entre le début et la fin : en cours, même si des résultats provisoires sont déjà importés
+        # (import RaceNet pendant le rallye). Sans date de fin, des résultats signifient « terminé ».
+        if started and (now <= ends_at if ends_at is not None else not has_results):
+            statuses.append("live")
+        elif has_results:
             statuses.append("done")
         elif ends_at is not None and ends_at < now:
             statuses.append("done_pending")
-        elif starts_at is not None and starts_at <= now and (ends_at is None or now <= ends_at):
-            statuses.append("live")
         else:
             statuses.append("upcoming")
     # Le premier rallye à venir (dans l'ordre du calendrier) est « le prochain »

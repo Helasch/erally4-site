@@ -203,7 +203,14 @@ export type Home = {
   total_rounds: number;
   completed_rounds: number;
   last_rally:
-    | (RallyRef & { starts_at: string | null; ends_at: string | null; podium: PodiumEntry[]; top5: PodiumEntry[]; result_count: number })
+    | (RallyRef & {
+        starts_at: string | null;
+        ends_at: string | null;
+        status: RallyStatus;
+        podium: PodiumEntry[];
+        top5: PodiumEntry[];
+        result_count: number;
+      })
     | null;
   standings: {
     after: RallyRef | null;

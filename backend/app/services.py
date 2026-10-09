@@ -341,8 +341,11 @@ def _podium_entry(result: RallyResult, c: Classified) -> dict:
 def home_payload(db: Session, championship: Championship) -> dict:
     """Données de la page d'accueil : dernier rallye, podium, chiffres clés, top 5, calendrier."""
     rallies = list(championship.rallies)
-    done = [r for r in rallies if r.results]
-    last = done[-1] if done else None
+    statuses = rally_statuses(championship)
+    with_results = [r for r in rallies if r.results]
+    last = with_results[-1] if with_results else None
+    # Rallyes terminés (un rallye en cours peut déjà avoir des résultats provisoires)
+    done = [r for r in with_results if statuses[r.id] != "live"]
     standings = championship_standings(db, championship)
     table = standings["standings"]
 
@@ -366,6 +369,7 @@ def home_payload(db: Session, championship: Championship) -> dict:
             {
                 **_rally_ref(last, rallies),
                 **rally_dates(last),
+                "status": statuses[last.id],
                 "podium": [_podium_entry(r, c) for r, c in classified_results(last) if c.position][:3],
                 "top5": [_podium_entry(r, c) for r, c in classified_results(last) if c.position][:5],
                 "result_count": len(last.results),

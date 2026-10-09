@@ -18,6 +18,9 @@ function summary(home: Home): string | null {
   const last = home.last_rally;
   if (!last || last.podium.length === 0) return null;
   const [p1, p2, p3] = last.podium;
+  if (last.status === "live") {
+    return `Rallye en cours : ${p1.name} est en tête${p2 ? ` devant ${p2.name}` : ""}. Classement provisoire.`;
+  }
   let text = `${p1.name} s'impose`;
   if (p2) text += ` devant ${p2.name}${p3 ? ` et ${p3.name}` : ""}`;
 
@@ -73,7 +76,8 @@ export default async function HomePage() {
             {last ? (
               <>
                 <p className="hero-kicker">
-                  Manche {last.round} sur {home.total_rounds} · Terminée
+                  Manche {last.round} sur {home.total_rounds} ·{" "}
+                  {last.status === "live" ? <span className="hero-live">En cours</span> : "Terminée"}
                 </p>
                 <h1 className="hero-title">{last.name}</h1>
                 <p className="hero-text">{summary(home)}</p>
@@ -103,7 +107,7 @@ export default async function HomePage() {
           {last && last.podium.length > 0 && (
             <aside className="podium-card" aria-label={`Podium — ${last.name}`}>
               <header>
-                <h2>Podium</h2>
+                <h2>{last.status === "live" ? "Podium provisoire" : "Podium"}</h2>
                 <span>{last.name}</span>
               </header>
               <ol>
@@ -253,7 +257,7 @@ export default async function HomePage() {
                   <span className="cal-meta">
                     {done && r.winner ? (
                       <>
-                        <small>Vainqueur</small>
+                        <small>{r.status === "live" ? "En tête" : "Vainqueur"}</small>
                         {r.winner.name}
                       </>
                     ) : (

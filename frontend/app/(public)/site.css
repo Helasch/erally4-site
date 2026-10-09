@@ -3049,3 +3049,65 @@
     display: none;
   }
 }
+
+/* Rallye en cours : point clignotant dans l'onglet, badge et note sur la vue du rallye */
+.site .live-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-left: 8px;
+  border-radius: 50%;
+  background: var(--s-red-bright);
+  vertical-align: 2px;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
+.site .view-bar .cal-status {
+  flex: none;
+}
+
+.site .view-bar .cal-status.live::before {
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
+.site .live-note {
+  margin: -8px 0 18px;
+  font-size: 0.85rem;
+  color: var(--s-muted);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site .live-dot {
+    animation: none;
+  }
+}
+
+/* Bandeau du haut et accueil pendant un rallye en cours */
+.site .ticker-label .live-dot {
+  margin: 0 6px 0 0;
+  background: #fff;
+}
+
+.site .hero-live {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  background: var(--s-red-bright);
+  color: #fff;
+}
+
+.site .hero-live::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  margin-right: 6px;
+  border-radius: 50%;
+  background: #fff;
+  animation: live-pulse 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .site .hero-live::before {
+    animation: none;
+  }
+}

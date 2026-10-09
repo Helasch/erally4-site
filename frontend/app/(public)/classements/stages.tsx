@@ -9,12 +9,15 @@ export function StageBar({
   current,
   hrefFor,
   finalHref,
+  finalLabel = "Final",
 }: {
   stages: StageSummary[];
   /** Spéciale affichée (null : classement final) */
   current: number | null;
   hrefFor: (es: number) => string;
   finalHref: string;
+  /** « Final », ou « Général » pendant le rallye */
+  finalLabel?: string;
 }) {
   return (
     <nav className="stage-bar" aria-label="Spéciales du rallye">
@@ -35,7 +38,7 @@ export function StageBar({
         ))}
         <li className={`bar-final${current === null ? " active" : ""}`}>
           <Link href={finalHref} scroll={false} aria-current={current === null ? "page" : undefined}>
-            <strong>Final</strong>
+            <strong>{finalLabel}</strong>
           </Link>
         </li>
       </ol>
