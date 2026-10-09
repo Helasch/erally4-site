@@ -171,6 +171,13 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
   if (es !== null && !stages.some((s) => s.number === es)) notFound();
   const rallyHref = href(keep, { rallye: String(rallyId) });
   const stageHref = (n: number) => href(keep, { rallye: String(rallyId), es: String(n) });
+  const winner = rally.results.find((r) => r.position === 1);
+  const overall = {
+    href: rallyHref,
+    winner: winner?.name ?? null,
+    time: winner?.time ?? null,
+    finishers: rally.results.filter((r) => r.position !== null).length,
+  };
 
   return (
     <>
@@ -178,16 +185,11 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
         <p className="view-label">
           Résultats · manche {rally.round} · {rally.name}
         </p>
-        {es !== null && (
-          <Link href={rallyHref} className="back-link" scroll={false}>
-            ‹ Classement général du rallye
-          </Link>
-        )}
       </div>
 
       {es !== null ? (
         <>
-          <StageWinners stages={stages} current={es} hrefFor={stageHref} />
+          <StageWinners stages={stages} overall={overall} current={es} hrefFor={stageHref} />
           <StageView rallyId={rallyId} es={es} count={stages.length} />
         </>
       ) : rally.results.length === 0 ? (
@@ -211,7 +213,7 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
                 </li>
               ))}
           </ol>
-          {stages.length > 0 && <StageWinners stages={stages} hrefFor={stageHref} />}
+          {stages.length > 0 && <StageWinners stages={stages} overall={overall} hrefFor={stageHref} />}
           <RallyTable
             rows={rally.results}
             title={shortRallyName(rally.name)}

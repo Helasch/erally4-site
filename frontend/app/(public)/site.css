@@ -2583,7 +2583,7 @@
 .site .stage-strip ol {
   display: grid;
   grid-auto-flow: column;
-  grid-auto-columns: minmax(150px, 1fr);
+  grid-auto-columns: minmax(132px, 1fr);
   gap: 8px;
   margin: 0;
   padding: 0 0 4px;
@@ -2613,26 +2613,6 @@
 }
 
 /* Spéciale affichée */
-.site .stage-strip li.active a {
-  background: var(--s-red);
-  color: #fff;
-}
-
-.site .stage-strip li.active .strip-es,
-.site .stage-strip li.active .strip-meta {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.site .back-link {
-  font-weight: 700;
-  text-decoration: none;
-  color: var(--s-red-text);
-}
-
-.site .back-link:hover {
-  text-decoration: underline;
-}
-
 .site .strip-es {
   font-family: var(--s-display);
   font-style: italic;
@@ -2656,7 +2636,8 @@
 }
 
 .site .strip-winner {
-  margin-top: 6px;
+  margin-top: auto;
+  padding-top: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2666,6 +2647,30 @@
 .site .strip-time {
   font-variant-numeric: tabular-nums;
   font-size: 0.85rem;
+}
+
+/* Carte du général : même forme, liseré sombre pour la distinguer des spéciales */
+.site .stage-strip li.strip-overall a {
+  border-top-color: var(--s-black);
+}
+
+.site .stage-strip li.strip-overall .strip-es {
+  color: var(--s-ink);
+}
+
+.site .stage-strip li.strip-overall.active a {
+  border-top-color: var(--s-red);
+}
+
+.site .stage-strip li.active a {
+  background: var(--s-red);
+  color: #fff;
+}
+
+.site .stage-strip li.active .strip-es,
+.site .stage-strip li.active .strip-meta,
+.site .stage-strip li.strip-overall.active .strip-es {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* En-tête d'une spéciale */
