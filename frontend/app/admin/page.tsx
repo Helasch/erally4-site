@@ -4,7 +4,14 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { adminApi, errorMessage, type AdminChampionship, type Driver } from "@/lib/admin-api";
 
-type ImportRow = { id: number; kind: "rally" | "championship"; rally_id: number | null; filename: string; row_count: number; created_at: string };
+type ImportRow = { id: number; kind: "rally" | "championship" | "racenet" | "stage"; rally_id: number | null; filename: string; row_count: number; created_at: string };
+
+const IMPORT_LABELS: Record<ImportRow["kind"], string> = {
+  rally: "Rallye",
+  championship: "Général",
+  racenet: "RaceNet",
+  stage: "Spéciale",
+};
 type StandingsSummary = { mode: string; unidentified: number; standings: unknown[] };
 
 type Data = {
@@ -132,9 +139,9 @@ export default function Dashboard() {
             <ul className="activity-list">
               {data.imports.slice(0, 6).map((i) => (
                 <li key={i.id}>
-                  <span className={`tag ${i.kind}`}>{i.kind === "rally" ? "Rallye" : "Général"}</span>
+                  <span className={`tag ${i.kind}`}>{IMPORT_LABELS[i.kind]}</span>
                   <span className="activity-text">
-                    {i.kind === "rally" ? rallyName(i.rally_id) : "Classement championnat"} · {i.row_count} lignes
+                    {i.kind === "championship" ? "Classement championnat" : rallyName(i.rally_id)} · {i.row_count} lignes
                   </span>
                   <time className="muted">
                     {new Date(i.created_at + "Z").toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}

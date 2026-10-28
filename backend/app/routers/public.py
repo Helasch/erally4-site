@@ -18,8 +18,8 @@ from app.services import (
     not_found,
     overall_after_stage,
     rally_results_payload,
+    rally_scoring,
     read_settings,
-    scoring_table,
     stage_results_payload,
     stage_summary,
 )
@@ -111,7 +111,6 @@ def current_standings(db: Session = Depends(get_db)):
 def rally(rally_id: int, db: Session = Depends(get_db)):
     r = get_rally(db, rally_id)
     c = r.championship
-    scoring = scoring_table(c) if c.scoring_mode == "custom" else None
     statuses = rally_statuses(c)
     siblings = [_rally_summary(x, i, statuses[x.id]) for i, x in enumerate(c.rallies)]
     index = next(i for i, x in enumerate(c.rallies) if x.id == r.id)
@@ -124,7 +123,7 @@ def rally(rally_id: int, db: Session = Depends(get_db)):
         "championship": {"id": c.id, "name": c.name, "mode": c.scoring_mode},
         "rallies": siblings,
         "stages": [stage_summary(s) for s in r.stages],
-        "results": rally_results_payload(r, scoring),
+        "results": rally_results_payload(r, rally_scoring(c, r)),
     }
 
 

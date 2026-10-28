@@ -7,7 +7,27 @@ from collections import Counter
 from dataclasses import dataclass, field
 
 
-# --- Classement général avec barème personnalisé -----------------------------
+# --- Barème RaceNet ---------------------------------------------------------------
+
+# Barème du mode WRC d'EA SPORTS WRC, appliqué au classement du rallye par les championnats de club RaceNet
+WRC_POINTS = {1: 25, 2: 18, 3: 15, 4: 12, 5: 10, 6: 8, 7: 6, 8: 4, 9: 2, 10: 1}
+# Power Stage (dernière spéciale du rallye) : points supplémentaires pour les cinq plus rapides
+POWER_STAGE_POINTS = {1: 5, 2: 4, 3: 3, 4: 2, 5: 1}
+
+
+def power_stage_bonus(stage_positions: dict[int, int], classified: set[int]) -> dict[int, int]:
+    """Points de Power Stage : places des pilotes sur la dernière spéciale {pilote: place}.
+
+    Seuls les pilotes classés au rallye les marquent (un non-classé ne marque aucun point sur la manche).
+    """
+    return {
+        driver_id: POWER_STAGE_POINTS[position]
+        for driver_id, position in stage_positions.items()
+        if position in POWER_STAGE_POINTS and driver_id in classified
+    }
+
+
+# --- Classement général calculé à partir des rallyes -----------------------------
 
 
 @dataclass
@@ -28,11 +48,15 @@ class StandingEntry:
 
 
 def compute_custom_standings(
-    rallies: list[list[RallyFinish]], scoring: dict[int, int]
+    rallies: list[list[RallyFinish]],
+    scoring: dict[int, int],
+    bonus: list[dict[int, int]] | None = None,
 ) -> list[StandingEntry]:
     """Classement général à partir des résultats de chaque rallye et d'un barème {place: points}.
 
-    Départage des égalités de points au nombre de meilleures places (victoires, puis 2es places, etc.).
+    `bonus` : points supplémentaires de chaque rallye {pilote: points} (Power Stage), comptés seulement
+    pour les pilotes classés au rallye.
+    Départage des égalités de points au nombre de meilleures places au rallye (victoires, puis 2es places, etc.).
     Les pilotes toujours à égalité partagent la même position.
     """
     totals: dict[int, StandingEntry] = {}
@@ -45,7 +69,7 @@ def compute_custom_standings(
                 entry = StandingEntry(0, finish.driver_id, finish.name, 0, [None] * len(rallies))
                 totals[finish.driver_id] = entry
                 finishes[finish.driver_id] = Counter()
-            points = scoring.get(finish.position, 0)
+            points = scoring.get(finish.position, 0) + (bonus[index].get(finish.driver_id, 0) if bonus else 0)
             entry.points += points
             entry.per_rally[index] = points
             finishes[finish.driver_id][finish.position] += 1

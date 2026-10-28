@@ -22,7 +22,7 @@ Chaque championnat a un mode, modifiable dans l'admin :
 
 | Mode | Classement général | Classement d'un rallye |
 |---|---|---|
-| **RaceNet** | dernier CSV « championship » importé, points RaceNet tels quels | CSV « event » du rallye, au temps |
+| **RaceNet** | calculé par le site : barème WRC (25-18-15-12-10-8-6-4-2-1) au classement de chaque rallye, plus Power Stage (5-4-3-2-1 aux cinq plus rapides de la dernière spéciale, classés au rallye) ; le classement exporté par RaceNet sert de contrôle (écarts affichés dans l'admin) | import RaceNet (favori) ou CSV du rallye, au temps |
 | **Personnalisé** | calculé depuis les rallyes avec le barème défini (points par place) ; égalités départagées au nombre de victoires, puis de 2es places, etc. | idem, avec les points du barème |
 
 ### Formats CSV (exports RaceNet)
@@ -31,6 +31,8 @@ Le type est détecté depuis l'en-tête :
 
 - rallye : `Rank,DisplayName,Vehicle,Time,DifferenceToFirst,Platform`
 - championnat : `Rank,DisplayName,PointsAccumulated`
+
+Une spéciale s'importe seule avec un fichier au format rallye (choix « Une spéciale d'un rallye » dans l'admin) : elle remplace ou complète les spéciales du rallye, et le classement du rallye peut être recalculé à partir des spéciales (pilotes classés sur toutes les spéciales, au temps total, comme le général de RaceNet).
 
 Les fichiers bruts sont conservés dans le volume `/data/uploads`.
 

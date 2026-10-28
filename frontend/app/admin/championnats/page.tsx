@@ -52,7 +52,7 @@ export default function AdminHome() {
         <div className="row">
           <input name="name" placeholder="ex. eRally4 Cup 2026" required maxLength={120} />
           <select name="mode" defaultValue="racenet">
-            <option value="racenet">Barème RaceNet</option>
+            <option value="racenet">Barème RaceNet (WRC + Power Stage)</option>
             <option value="custom">Barème personnalisé</option>
           </select>
           <button className="primary">Créer</button>
@@ -135,7 +135,7 @@ function ChampionshipCard({
           value={c.mode}
           onChange={(e) => run(() => adminApi.patch(`/championships/${c.id}`, { mode: e.target.value }))}
         >
-          <option value="racenet">Barème RaceNet (import du CSV championnat)</option>
+          <option value="racenet">Barème RaceNet : WRC + Power Stage, calculé par le site</option>
           <option value="custom">Barème personnalisé (calculé depuis les rallyes)</option>
         </select>
         <Link href={`/admin/classement/${c.id}`}>Classement général et pénalités</Link>

@@ -4,10 +4,12 @@ from app.scoring import (
     Finish,
     Movement,
     PastRallyResult,
+    WRC_POINTS,
     RallyFinish,
     compare_standings,
     compute_custom_standings,
     driver_stats,
+    power_stage_bonus,
     suggest_for_championship,
     suggest_for_rally,
 )
@@ -144,3 +146,35 @@ def test_cumulative_tie_broken_by_last_stage():
 
     times = [StageTime("a", 1, 1, 1000), StageTime("b", 1, 2, 1000)]
     assert [k for k, _ in cumulative_after(times, 1)] == ["a", "b"]
+
+
+# --- Barème RaceNet : barème WRC et Power Stage -------------------------------------
+
+
+def test_power_stage_bonus_goes_to_five_fastest_classified():
+    # Places sur la dernière spéciale ; le pilote 7 est 2e de la spéciale mais pas classé au rallye
+    positions = {1: 3, 7: 2, 2: 1, 3: 5, 4: 6, 5: 4}
+    assert power_stage_bonus(positions, classified={1, 2, 3, 4, 5}) == {2: 5, 1: 3, 5: 2, 3: 1}
+
+
+def test_bonus_added_to_rally_points():
+    # Pologne : 1er au général et 2e de la Power Stage = 25 + 4
+    standings = compute_custom_standings(
+        [[F(1, 1), F(2, 2)]], WRC_POINTS, bonus=[power_stage_bonus({1: 2, 2: 1}, {1, 2})]
+    )
+    assert [(e.driver_id, e.points, e.per_rally) for e in standings] == [(1, 29, [29]), (2, 23, [23])]
+
+
+def test_bonus_ignored_for_driver_not_in_rally():
+    standings = compute_custom_standings([[F(1, 1)], [F(2, 1)]], WRC_POINTS, bonus=[{}, {1: 5, 2: 5}])
+    assert {e.driver_id: e.points for e in standings} == {1: 25, 2: 30}
+
+
+def test_countback_ignores_bonus():
+    # Même total : P1 a une victoire (25), P2 une 2e place et la Power Stage (18 + 5 + 2 sur un autre rallye)
+    standings = compute_custom_standings(
+        [[F(1, 1), F(2, 2)], [F(2, 9), F(1, 11)]],
+        WRC_POINTS,
+        bonus=[{2: 5}, {2: 0}],
+    )
+    assert [(e.driver_id, e.points, e.position) for e in standings] == [(1, 25, 1), (2, 25, 2)]
