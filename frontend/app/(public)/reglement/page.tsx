@@ -293,15 +293,18 @@ export default async function ReglementPage() {
 
             <Article n={7}>
               <p>
-                Le classement général additionne les points de <strong>toutes les manches</strong> disputées, tels que
-                calculés par le championnat de club RaceNet. Une manche non disputée rapporte 0 point.
+                Le classement général additionne les points de <strong>toutes les manches</strong> disputées, selon le
+                barème de l&apos;article 6. Une manche non disputée rapporte 0 point.
               </p>
               <p>
-                Les ajustements de points décidés par les organisateurs (article 8) sont appliqués sur le{" "}
-                <Link href="/classements">classement du site</Link>, avec leur motif.
+                Il est calculé par le site à partir du résultat de chaque manche, pénalités comprises, et publié sur la
+                page <Link href="/classements">Classements</Link>. Les ajustements de points décidés par les
+                organisateurs (article 8) y sont appliqués, avec leur motif.
               </p>
               <aside className="callout">
-                <strong>En cas d&apos;égalité de points</strong>, l&apos;ordre du classement RaceNet fait foi.
+                <strong>En cas d&apos;égalité de points</strong>, les pilotes sont départagés par leur nombre de
+                victoires, puis de 2es places, puis de 3es places, et ainsi de suite. Si l&apos;égalité persiste, ils
+                partagent la même place.
               </aside>
             </Article>
 

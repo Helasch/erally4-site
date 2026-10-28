@@ -14,6 +14,7 @@ import {
 } from "@/lib/api";
 import { movementLabel } from "@/lib/format";
 import { useMyDriverId } from "@/lib/use-my-driver";
+import { PowerStageNote, RallyPoints } from "../points";
 
 const TOP = 15;
 
@@ -174,12 +175,10 @@ export function StandingsTable({
 export function RallyTable({
   rows,
   title,
-  showPoints,
   stages = [],
 }: {
   rows: RallyResultRow[];
   title: string;
-  showPoints: boolean;
   /** Spéciales du rallye : chaque ligne se déplie pour montrer le parcours du pilote */
   stages?: StageSummary[];
 }) {
@@ -187,7 +186,10 @@ export function RallyTable({
   const [open, setOpen] = useState<Set<number>>(new Set());
   const me = useMyDriverId();
   const expandable = stages.length > 0 && rows.some((r) => r.stages?.length);
-  const columns = 8 + (showPoints ? 1 : 0);
+  const columns = 9;
+  const hasPowerStage = rows.some((r) => r.power_stage_points > 0);
+  // La Power Stage est la dernière spéciale du rallye
+  const lastStage = stages.at(-1);
   const meta = f.searching
     ? `${f.filtered.length} résultat${f.filtered.length > 1 ? "s" : ""}`
     : f.all || rows.length <= TOP
@@ -217,7 +219,7 @@ export function RallyTable({
           <thead>
             <tr>
               <ResultColumns />
-              {showPoints && <th className="r col-pts">Pts</th>}
+              <th className="r col-pts">Pts</th>
               <th className="toggle-col">
                 <span className="visually-hidden">Détail des spéciales</span>
               </th>
@@ -262,7 +264,9 @@ export function RallyTable({
                       {r.disqualified ? "NC" : r.position === 1 ? formatTime(r.time) : r.diff ? formatDiff(r.diff) : "—"}
                       {!r.disqualified && <PenaltyMark penalty={r.penalty_s} reason={r.penalty_reason} />}
                     </td>
-                    {showPoints && <td className="r pts">{r.points}</td>}
+                    <td className="r pts">
+                      <RallyPoints points={r.points} powerStage={r.power_stage_points} />
+                    </td>
                     <td className="toggle-col">
                       {canOpen && (
                         <button
@@ -290,6 +294,7 @@ export function RallyTable({
           </tbody>
         </table>
       </div>
+      {hasPowerStage && <PowerStageNote stage={lastStage && `ES${lastStage.number}`} />}
     </TableCard>
   );
 }

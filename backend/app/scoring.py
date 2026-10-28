@@ -51,11 +51,13 @@ def compute_custom_standings(
     rallies: list[list[RallyFinish]],
     scoring: dict[int, int],
     bonus: list[dict[int, int]] | None = None,
+    extra: dict[int, int] | None = None,
 ) -> list[StandingEntry]:
     """Classement général à partir des résultats de chaque rallye et d'un barème {place: points}.
 
     `bonus` : points supplémentaires de chaque rallye {pilote: points} (Power Stage), comptés seulement
     pour les pilotes classés au rallye.
+    `extra` : points ajoutés au total avant le classement {pilote: points} (ajustements des organisateurs).
     Départage des égalités de points au nombre de meilleures places au rallye (victoires, puis 2es places, etc.).
     Les pilotes toujours à égalité partagent la même position.
     """
@@ -73,6 +75,10 @@ def compute_custom_standings(
             entry.points += points
             entry.per_rally[index] = points
             finishes[finish.driver_id][finish.position] += 1
+
+    for driver_id, points in (extra or {}).items():
+        if driver_id in totals:
+            totals[driver_id].points += points
 
     max_position = max((p for c in finishes.values() for p in c), default=0)
 
@@ -259,7 +265,7 @@ def suggest_for_championship(
     return [s for _, s in ranked[:limit]]
 
 
-# --- Pénalités : reclassement d'un rallye et ajustements du général ------------
+# --- Pénalités : reclassement d'un rallye ---------------------------------------
 
 
 @dataclass
@@ -297,25 +303,6 @@ def classify(results: list[TimedResult]) -> list[Classified]:
         if r.disqualified:
             out.append(Classified(r.key, None, r.time_ms + r.penalty_ms, None, None))
     return out
-
-
-def apply_adjustments(
-    entries: list[tuple[int | None, int, int]], adjustments: dict[int, int]
-) -> list[tuple[int, int, int]]:
-    """Ajustements de points (pénalités) sur un classement donné en (clé pilote, position, points).
-
-    Renvoie (indice de la ligne d'origine, nouvelle position, nouveaux points) dans le nouvel ordre.
-    Sans ajustement, le classement est rendu tel quel ; sinon il est retrié par points,
-    l'ordre d'origine départageant les égalités.
-    """
-    if not any(adjustments.get(key, 0) for key, _, _ in entries if key is not None):
-        return [(i, position, points) for i, (_, position, points) in enumerate(entries)]
-    adjusted = [
-        (i, position, points + (adjustments.get(key, 0) if key is not None else 0))
-        for i, (key, position, points) in enumerate(entries)
-    ]
-    adjusted.sort(key=lambda e: (-e[2], e[1]))
-    return [(i, rank, points) for rank, (i, _, points) in enumerate(adjusted, start=1)]
 
 
 # --- Général après une spéciale ---------------------------------------------------------

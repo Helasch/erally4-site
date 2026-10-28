@@ -233,7 +233,6 @@ async function RallyView({ rallyId, es, keep }: { rallyId: number; es: number | 
               <RallyTable
                 rows={rally.results}
                 title={live ? "Classement provisoire" : "Classement final"}
-                showPoints={rally.championship.mode === "custom"}
                 stages={stages}
               />
             </>

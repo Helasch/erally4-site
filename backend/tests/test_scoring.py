@@ -178,3 +178,25 @@ def test_countback_ignores_bonus():
         bonus=[{2: 5}, {2: 0}],
     )
     assert [(e.driver_id, e.points, e.position) for e in standings] == [(1, 25, 1), (2, 25, 2)]
+
+
+# --- Ajustements des organisateurs : comptés avant le classement ------------------------
+
+
+def test_adjustment_counted_before_ranking():
+    standings = compute_custom_standings([[F(1, 1), F(2, 2)]], WRC_POINTS, extra={1: -10})
+    assert [(e.driver_id, e.points, e.position) for e in standings] == [(2, 18, 1), (1, 15, 2)]
+
+
+def test_tie_after_adjustment_broken_by_wins():
+    # P1 : deux 2es places (36) devant P2 (une victoire, 25) ; un ajustement de +11 crée l'égalité :
+    # la victoire de P2 le place devant, comme toute autre égalité
+    standings = compute_custom_standings(
+        [[F(2, 1), F(1, 2)], [F(1, 2)]], WRC_POINTS, extra={2: 11}
+    )
+    assert [(e.driver_id, e.points, e.position) for e in standings] == [(2, 36, 1), (1, 36, 2)]
+
+
+def test_adjustment_for_driver_without_result_ignored():
+    standings = compute_custom_standings([[F(1, 1)]], WRC_POINTS, extra={9: 50})
+    assert [(e.driver_id, e.points) for e in standings] == [(1, 25)]

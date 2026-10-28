@@ -39,7 +39,6 @@ from app.scoring import (
     RallyFinish,
     StageTime,
     TimedResult,
-    apply_adjustments,
     classify,
     compare_standings,
     compute_custom_standings,
@@ -215,9 +214,12 @@ def _rally_ref(rally: Rally | None, rallies: list[Rally]) -> dict | None:
     return {"id": rally.id, "name": rally.name, "round": rallies.index(rally) + 1}
 
 
-def _raw_snapshots(db: Session, championship: Championship) -> list[Snapshot]:
+def _raw_snapshots(
+    db: Session, championship: Championship, adjustments: list[StandingAdjustment] | None = None
+) -> list[Snapshot]:
     """Un classement général par rallye disputé, dans l'ordre du calendrier, calculé à partir des résultats
     (pénalités comprises) : barème personnalisé, ou barème RaceNet (barème WRC et Power Stage).
+    `adjustments` : ajustements de points des organisateurs à inclure (aucun pour le contrôle RaceNet).
 
     Le classement exporté par RaceNet n'est plus affiché : il sert de contrôle (voir racenet_check).
     """
@@ -236,8 +238,16 @@ def _raw_snapshots(db: Session, championship: Championship) -> list[Snapshot]:
     for index, rally in enumerate(rallies):
         if not rally.results:
             continue
+        # Un ajustement compte à partir du rallye concerné (ou dès le premier s'il n'en vise aucun) ;
+        # il entre dans les points avant le classement, pour que les égalités se départagent comme les autres
+        totals: dict[int, int] = defaultdict(int)
+        reasons: dict[int, list[str]] = defaultdict(list)
+        for a in adjustments or []:
+            if a.rally is None or a.rally.order_index <= rally.order_index:
+                totals[a.driver_id] += a.points
+                reasons[a.driver_id].append(f"{a.points:+d} pts : {a.reason}")
         entries = compute_custom_standings(
-            finishes[: index + 1], scale, bonus=[s.bonus for s in scorings[: index + 1]]
+            finishes[: index + 1], scale, bonus=[s.bonus for s in scorings[: index + 1]], extra=dict(totals)
         )
         snapshots.append(
             Snapshot(
@@ -250,6 +260,8 @@ def _raw_snapshots(db: Session, championship: Championship) -> list[Snapshot]:
                         "identified": True,
                         "points": e.points,
                         "per_rally": e.per_rally + [None] * (len(rallies) - len(e.per_rally)),
+                        "adjustment": totals.get(e.driver_id, 0),
+                        "adjustment_reasons": reasons.get(e.driver_id, []),
                     }
                     for e in entries
                 ],
@@ -301,39 +313,10 @@ def racenet_check(db: Session, championship: Championship) -> list[dict]:
 
 def standings_snapshots(db: Session, championship: Championship) -> list[Snapshot]:
     """Classements généraux par rallye, ajustements de points des organisateurs compris."""
-    snapshots = _raw_snapshots(db, championship)
     adjustments = db.scalars(
         select(StandingAdjustment).where(StandingAdjustment.championship_id == championship.id)
     ).all()
-    if not adjustments:
-        return snapshots
-
-    for snapshot in snapshots:
-        # Un ajustement compte à partir du rallye concerné (ou partout s'il n'en vise aucun)
-        applicable = [
-            a
-            for a in adjustments
-            if a.rally is None or snapshot.rally is None or a.rally.order_index <= snapshot.rally.order_index
-        ]
-        totals: dict[int, int] = defaultdict(int)
-        reasons: dict[int, list[str]] = defaultdict(list)
-        for a in applicable:
-            totals[a.driver_id] += a.points
-            reasons[a.driver_id].append(f"{a.points:+d} pts : {a.reason}")
-        reordered = apply_adjustments(
-            [(e["driver_id"], e["position"], e["points"]) for e in snapshot.entries], dict(totals)
-        )
-        snapshot.entries = [
-            {
-                **snapshot.entries[i],
-                "position": position,
-                "points": points,
-                "adjustment": totals.get(snapshot.entries[i]["driver_id"], 0),
-                "adjustment_reasons": reasons.get(snapshot.entries[i]["driver_id"], []),
-            }
-            for i, position, points in reordered
-        ]
-    return snapshots
+    return _raw_snapshots(db, championship, adjustments)
 
 
 def championship_standings(db: Session, championship: Championship, after_rally_id: int | None = None) -> dict:
@@ -1333,6 +1316,7 @@ def driver_profile(db: Session, driver: Driver, championship: Championship | Non
                     "vehicle": r.vehicle,
                     "platform": r.platform,
                     "points": result_points(scorings[rally.id], r, c),
+                    "power_stage_points": scorings[rally.id].bonus.get(driver.id, 0) if c.position else 0,
                     **_penalty_info(r),
                 }
                 for round_, rally, r, c in mine

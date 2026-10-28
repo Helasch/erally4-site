@@ -5,6 +5,7 @@ import { ordinal, shortRallyName } from "@/lib/format";
 import Avatar from "../../avatar";
 import CarVisual from "../../car-visual";
 import PageHeader from "../../page-header";
+import { PowerStageNote, RallyPoints } from "../../points";
 
 export const dynamic = "force-dynamic";
 
@@ -63,7 +64,6 @@ export default async function PilotePage({ params }: { params: Promise<{ id: str
 
   const season = driver.season;
   const stats = season?.stats;
-  const custom = season?.championship.mode === "custom";
 
   return (
     <>
@@ -185,7 +185,7 @@ export default async function PilotePage({ params }: { params: Promise<{ id: str
                         <th className="r hide-sm">Temps</th>
                         <th className="r">Écart</th>
                         <th className="hide-sm">Voiture</th>
-                        {custom && <th className="r">Pts</th>}
+                        <th className="r">Pts</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -212,13 +212,16 @@ export default async function PilotePage({ params }: { params: Promise<{ id: str
                             {h.penalty_s > 0 && !h.disqualified && <span className="penalty-mark">dont +{h.penalty_s} s</span>}
                           </td>
                           <td className="hide-sm muted-cell">{h.vehicle}</td>
-                          {custom && <td className="r pts">{h.points}</td>}
+                          <td className="r pts">
+                            <RallyPoints points={h.points} powerStage={h.power_stage_points} />
+                          </td>
                         </tr>
                       ))}
                     </tbody>
                   </table>
                 </div>
               )}
+              {season.history.some((h) => h.power_stage_points > 0) && <PowerStageNote />}
               {season.adjustment_reasons.length > 0 && (
                 <div className="adj-notes">
                   <p>Ajustements de points au classement général (article 8 du règlement) :</p>
