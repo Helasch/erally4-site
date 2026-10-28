@@ -298,6 +298,18 @@ def _parse(data: bytes):
         ) from None
 
 
+def _parse_for(data: bytes, stage_number: int | None):
+    """Lit le CSV ; un export de spéciale ne peut pas servir de classement final du rallye."""
+    parsed = _parse(data)
+    if parsed.stage and stage_number is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Ce fichier est le classement d'une spéciale (colonne TimePenalty) : "
+            "choisissez « Une spéciale d'un rallye » et le numéro de la spéciale.",
+        )
+    return parsed
+
+
 def _rally_for(db: Session, rally_id: int | None) -> Rally | None:
     return get_rally(db, rally_id) if rally_id else None
 
@@ -307,12 +319,12 @@ async def preview_import(
     file: UploadFile = File(...),
     championship_id: int = Form(...),
     rally_id: int | None = Form(None),
-    # Fichier d'une spéciale (même format qu'un rallye) : numéro de la spéciale dans le rallye
+    # Fichier d'une spéciale : numéro de la spéciale dans le rallye
     stage_number: int | None = Form(None, ge=1, le=50),
     db: Session = Depends(get_db),
 ):
     data = await _read_upload(file)
-    parsed = _parse(data)
+    parsed = _parse_for(data, stage_number)
     c = get_championship(db, championship_id)
     return build_preview(db, c, _rally_for(db, rally_id), parsed, stage_number)
 
@@ -331,7 +343,7 @@ async def create_import(
     session: AdminSession = Depends(current_session),
 ):
     data = await _read_upload(file)
-    parsed = _parse(data)
+    parsed = _parse_for(data, stage_number)
     try:
         raw = json.loads(resolutions)
         mapping = {int(line): str(name) for line, name in raw.items() if name}

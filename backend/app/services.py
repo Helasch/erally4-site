@@ -1026,8 +1026,8 @@ def commit_stage_import(
                 vehicle=r.vehicle,
                 platform=r.platform,
                 time_ms=r.time_ms,
-                # Le CSV donne le temps pénalités comprises, sans le détail
-                penalty_ms=0,
+                # Temps pénalité comprise ; la pénalité n'est connue qu'avec un export de spéciale (TimePenalty)
+                penalty_ms=r.penalty_ms,
                 diff_ms=r.diff_ms,
             )
         )
@@ -1059,7 +1059,7 @@ def commit_import(
 ) -> Import:
     """Enregistre l'import. `resolutions` associe le numéro de ligne d'un « WRC Player » au pseudo choisi.
 
-    Avec `stage_number`, le fichier est le classement d'une spéciale du rallye (même format que le rallye)."""
+    Avec `stage_number`, le fichier est le classement d'une spéciale du rallye."""
     if stage_number is not None:
         commit_stage_import(db, championship, rally, parsed, resolutions, stage_number, stage_name, recompute)
         record = Import(
