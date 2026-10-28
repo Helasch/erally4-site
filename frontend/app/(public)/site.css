@@ -2207,6 +2207,33 @@
   cursor: help;
 }
 
+/* Points d'une manche : part de la Power Stage en exposant (bleu des gains), légende sous le tableau */
+.site .ps-mark {
+  margin-left: 2px;
+  font-family: var(--s-body);
+  font-size: 0.72rem;
+  font-weight: 800;
+  line-height: 0;
+  color: var(--s-up);
+  cursor: help;
+}
+
+.site .ps-note {
+  margin: 10px 0 0;
+  font-size: 0.8rem;
+  color: var(--s-muted);
+}
+
+.site .ps-note .ps-mark {
+  margin: 0;
+  cursor: default;
+}
+
+.site .rank-table td.pts .pts-none {
+  font-weight: 400;
+  color: var(--s-muted);
+}
+
 .site .adj-notes {
   margin-top: 16px;
   padding: 12px 16px;
@@ -2792,6 +2819,25 @@
   .site .fixed-cols .toggle-col {
     width: 30px;
   }
+
+  /* Points : colonne étroite, pour laisser la place au pseudo. La part de la Power Stage passe
+     sous les points, sans agrandir la ligne (déjà sur deux niveaux) */
+  .site .fixed-cols .col-pts {
+    width: 36px;
+  }
+
+  .site .fixed-cols td.pts .ps-mark {
+    display: block;
+    margin: 3px 0 0;
+    font-size: 0.66rem;
+    line-height: 1;
+  }
+
+  /* Pénalité sous le temps : la ligne a déjà deux niveaux (pseudo, puis plateforme et voiture) */
+  .site .fixed-cols td.only-sm .penalty-mark {
+    display: block;
+    margin-left: 0;
+  }
 }
 
 /* Le bouton ▾ ne doit pas agrandir la ligne (même hauteur que sur les spéciales) */
@@ -2822,8 +2868,9 @@
     white-space: nowrap;
   }
 
+  /* Assez large pour un écart de plus d'une heure (+1:02:03.456) */
   .site .fixed-cols .col-mobile {
-    width: 118px;
+    width: 104px;
   }
 }
 

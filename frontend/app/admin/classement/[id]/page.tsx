@@ -8,6 +8,16 @@ import type { Standings } from "@/lib/api";
 import { DriverDatalist } from "../../driver-input";
 import { EditableDriver } from "../../editable-driver";
 
+/** Contrôle du classement calculé par le site avec celui exporté par RaceNet, après un rallye */
+type RacenetCheck = {
+  rally: { id: number; name: string; round: number };
+  compared: number;
+  unidentified: number;
+  differences: { driver_id: number; name: string; racenet: number | null; site: number | null }[];
+};
+
+type AdminStandings = Omit<Standings, "championship"> & { racenet_check: RacenetCheck[] };
+
 type Adjustment = {
   id: number;
   driver_id: number;
@@ -21,14 +31,14 @@ type Adjustment = {
 
 export default function AdminStandingsPage() {
   const { id } = useParams<{ id: string }>();
-  const [standings, setStandings] = useState<Omit<Standings, "championship"> | null>(null);
+  const [standings, setStandings] = useState<AdminStandings | null>(null);
   const [adjustments, setAdjustments] = useState<Adjustment[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [error, setError] = useState("");
 
   const reload = useCallback(() => {
     adminApi
-      .get<Omit<Standings, "championship">>(`/championships/${id}/standings`)
+      .get<AdminStandings>(`/championships/${id}/standings`)
       .then(setStandings)
       .catch((e) => setError(errorMessage(e)));
     adminApi.get<Adjustment[]>(`/championships/${id}/adjustments`).then(setAdjustments);
@@ -74,11 +84,12 @@ export default function AdminStandingsPage() {
         <Link href="/admin/championnats">← Championnats</Link>
       </p>
       <h1>Classement général</h1>
-      {standings.mode === "custom" && (
-        <p className="alert warn">
-          Barème personnalisé : le classement est calculé depuis les rallyes (pénalités de temps comprises).
-        </p>
-      )}
+      <p className="muted">
+        Classement calculé par le site à partir des rallyes, pénalités comprises :{" "}
+        {standings.mode === "custom"
+          ? "barème personnalisé."
+          : "barème RaceNet (barème WRC au classement du rallye, et Power Stage 5-4-3-2-1 pour les cinq plus rapides de la dernière spéciale)."}
+      </p>
       {error && <p className="alert error">{error}</p>}
       <DriverDatalist drivers={drivers} />
 
@@ -148,6 +159,8 @@ export default function AdminStandingsPage() {
         </form>
       </section>
 
+      <RacenetControl checks={standings.racenet_check} />
+
       {standings.unidentified > 0 && (
         <p className="muted">{standings.unidentified} « WRC Player » non identifié(s).</p>
       )}
@@ -194,5 +207,70 @@ export default function AdminStandingsPage() {
         </div>
       )}
     </main>
+  );
+}
+
+/** Écarts entre le classement calculé par le site et le dernier classement exporté par RaceNet */
+function RacenetControl({ checks }: { checks: RacenetCheck[] }) {
+  const [all, setAll] = useState(false);
+  if (checks.length === 0) return null;
+  const shown = all ? [...checks].reverse() : checks.slice(-1);
+  return (
+    <section className="card">
+      <h2>Contrôle avec RaceNet</h2>
+      <p className="muted">
+        Points calculés par le site comparés au classement du championnat exporté par RaceNet (sans les ajustements
+        des organisateurs). Un écart vient souvent d&apos;un résultat importé après l&apos;export de RaceNet, d&apos;une
+        pénalité, ou d&apos;un « WRC Player » à identifier.
+      </p>
+      {shown.map((check) => (
+        <div key={check.rally.id} style={{ marginTop: 12 }}>
+          <h3>
+            Après la manche {check.rally.round}, {check.rally.name}
+          </h3>
+          {check.differences.length === 0 ? (
+            <p className="alert ok">Identique à RaceNet ({check.compared} pilotes).</p>
+          ) : (
+            <>
+              <p className="alert warn">
+                {check.differences.length} écart(s) sur {check.compared} pilotes.
+                {check.unidentified > 0 && ` ${check.unidentified} « WRC Player » non identifié(s) chez RaceNet.`}
+              </p>
+              <div className="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Pilote</th>
+                      <th className="num">RaceNet</th>
+                      <th className="num">Site</th>
+                      <th className="num">Écart</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {check.differences.map((d) => (
+                      <tr key={d.driver_id}>
+                        <td>{d.name}</td>
+                        <td className="num">{d.racenet ?? "absent"}</td>
+                        <td className="num">{d.site ?? "absent"}</td>
+                        <td className="num">
+                          <strong>{(d.site ?? 0) - (d.racenet ?? 0) > 0 ? "+" : ""}{(d.site ?? 0) - (d.racenet ?? 0)}</strong>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+        </div>
+      ))}
+      {checks.length > 1 && (
+        <p>
+          <button className="link" onClick={() => setAll(!all)}>
+            {all ? "Afficher seulement le dernier rallye" : `Afficher les ${checks.length} rallyes contrôlés`}
+          </button>
+        </p>
+      )}
+    </section>
   );
 }

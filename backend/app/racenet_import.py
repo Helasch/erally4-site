@@ -164,10 +164,10 @@ def build_racenet_preview(
             "Le classement du championnat ne sera pas importé : RaceNet donne le classement actuel, "
             "qui ne correspond pas à l'après-rallye de cette épreuve."
         )
-    if include_standings and championship.scoring_mode == "custom":
+    if include_standings:
         warnings.append(
-            "Barème personnalisé : le classement général est calculé à partir des rallyes, "
-            "le classement RaceNet du championnat est enregistré mais pas affiché."
+            "Le classement général est calculé par le site à partir des rallyes : le classement RaceNet du "
+            "championnat est enregistré pour contrôle (écarts signalés sur la page Classement général de l'admin)."
         )
     if event.reconstructed:
         names = ", ".join(f"{name} (ES{number})" for number, name in event.reconstructed)

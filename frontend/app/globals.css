@@ -663,6 +663,16 @@ a.button.primary {
   color: #4a2f8f;
 }
 
+.tag.racenet {
+  background: #e3eefa;
+  color: #1f4f86;
+}
+
+.tag.stage {
+  background: #e4f3e8;
+  color: var(--ok-text);
+}
+
 .empty-state {
   text-align: center;
   padding: 32px;

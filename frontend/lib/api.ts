@@ -91,7 +91,10 @@ export type RallyResultRow = {
   time: string;
   diff: string | null;
   diff_prev: string | null;
-  points: number | null;
+  /** Points marqués sur la manche (0 si non classé), Power Stage comprise */
+  points: number;
+  /** Dont points de Power Stage (barème RaceNet) */
+  power_stage_points: number;
   penalty_s: number;
   disqualified: boolean;
   penalty_reason: string | null;
@@ -284,7 +287,10 @@ export type DriverProfile = {
       diff: string | null;
       vehicle: string;
       platform: string;
-      points: number | null;
+      /** Points marqués sur la manche (0 si non classé), Power Stage comprise */
+      points: number;
+      /** Dont points de Power Stage (barème RaceNet) */
+      power_stage_points: number;
       penalty_s: number;
       disqualified: boolean;
       penalty_reason: string | null;

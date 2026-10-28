@@ -38,10 +38,11 @@ from app.services import (
     get_or_create_driver,
     get_rally,
     not_found,
+    racenet_check,
     rally_results_payload,
+    rally_scoring,
     rally_statuses,
     read_settings,
-    scoring_table,
     validate_driver_name,
     write_settings,
 )
@@ -182,7 +183,9 @@ def set_scoring(championship_id: int, body: ScoringBody, db: Session = Depends(g
 
 @router.get("/championships/{championship_id}/standings", dependencies=protected)
 def admin_standings(championship_id: int, db: Session = Depends(get_db)):
-    return championship_standings(db, get_championship(db, championship_id))
+    c = get_championship(db, championship_id)
+    # Classement calculé par le site, et contrôle avec celui exporté par RaceNet
+    return {**championship_standings(db, c), "racenet_check": racenet_check(db, c)}
 
 
 # --- Rallyes ------------------------------------------------------------------------
@@ -266,7 +269,7 @@ def admin_rally_results(rally_id: int, db: Session = Depends(get_db)):
         "id": r.id,
         "name": r.name,
         "championship": {"id": c.id, "name": c.name, "mode": c.scoring_mode},
-        "results": rally_results_payload(r, scoring_table(c) if c.scoring_mode == "custom" else None),
+        "results": rally_results_payload(r, rally_scoring(c, r)),
     }
 
 
@@ -304,12 +307,14 @@ async def preview_import(
     file: UploadFile = File(...),
     championship_id: int = Form(...),
     rally_id: int | None = Form(None),
+    # Fichier d'une spéciale (même format qu'un rallye) : numéro de la spéciale dans le rallye
+    stage_number: int | None = Form(None, ge=1, le=50),
     db: Session = Depends(get_db),
 ):
     data = await _read_upload(file)
     parsed = _parse(data)
     c = get_championship(db, championship_id)
-    return build_preview(db, c, _rally_for(db, rally_id), parsed)
+    return build_preview(db, c, _rally_for(db, rally_id), parsed, stage_number)
 
 
 @router.post("/imports", status_code=201)
@@ -318,6 +323,10 @@ async def create_import(
     championship_id: int = Form(...),
     rally_id: int | None = Form(None),
     resolutions: str = Form("{}"),
+    stage_number: int | None = Form(None, ge=1, le=50),
+    stage_name: str | None = Form(None, max_length=120),
+    # Recalculer le général du rallye à partir des spéciales (import d'une spéciale)
+    recompute: bool = Form(False),
     db: Session = Depends(get_db),
     session: AdminSession = Depends(current_session),
 ):
@@ -330,7 +339,19 @@ async def create_import(
         raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Résolutions invalides.") from None
     c = get_championship(db, championship_id)
     rally = _rally_for(db, rally_id)
-    record = commit_import(db, c, rally, parsed, mapping, data, file.filename or "import.csv", session.admin_id)
+    record = commit_import(
+        db,
+        c,
+        rally,
+        parsed,
+        mapping,
+        data,
+        file.filename or "import.csv",
+        session.admin_id,
+        stage_number=stage_number,
+        stage_name=stage_name,
+        recompute=recompute,
+    )
     return {"id": record.id, "kind": record.kind, "row_count": record.row_count}
 
 

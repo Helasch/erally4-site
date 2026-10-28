@@ -7,7 +7,7 @@ import PageHeader from "../page-header";
 export const metadata = { title: "Règlement — eRally4 Cup" };
 export const dynamic = "force-dynamic";
 
-const UPDATED = "8 octobre 2026";
+const UPDATED = "28 octobre 2026";
 
 const ARTICLES = [
   { id: "objet", title: "Objet et organisation" },
@@ -35,6 +35,7 @@ const ROUNDS = [
 const VEHICLES = ["Ford Fiesta MK8 Rally4", "Opel Corsa Rally4", "Peugeot 208 Rally4", "Renault Clio Rally4"];
 
 const POINTS = [25, 18, 15, 12, 10, 8, 6, 4, 2, 1];
+const POWER_STAGE_POINTS = [5, 4, 3, 2, 1];
 
 const SANCTIONS = [
   {
@@ -233,8 +234,8 @@ export default async function ReglementPage() {
 
             <Article n={6}>
               <p>
-                Le championnat utilise le barème standard du mode WRC d&apos;EA SPORTS WRC, sans aucune modification ni
-                point bonus (pas de points de Power Stage) :
+                Le championnat utilise le barème du mode WRC d&apos;EA SPORTS WRC, tel que l&apos;applique le
+                championnat de club RaceNet. Le classement de la manche rapporte :
               </p>
               <div className="table-scroll">
                 <table className="rules-table points-table">
@@ -258,20 +259,52 @@ export default async function ReglementPage() {
                   </tbody>
                 </table>
               </div>
-              <p className="muted">Au-delà de la 10e place, aucun point n&apos;est attribué.</p>
+              <p>
+                La <strong>Power Stage</strong>, dernière spéciale de chaque manche, rapporte en plus des points aux cinq
+                pilotes les plus rapides, à condition d&apos;être classés à l&apos;arrivée de la manche :
+              </p>
+              <div className="table-scroll">
+                <table className="rules-table points-table">
+                  <thead>
+                    <tr>
+                      <th>Power Stage</th>
+                      {POWER_STAGE_POINTS.map((_, i) => (
+                        <th key={i}>{i === 0 ? "1er" : `${i + 1}e`}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <th scope="row">Points</th>
+                      {POWER_STAGE_POINTS.map((p, i) => (
+                        <td key={i} className={i < 3 ? `podium-${i + 1}` : ""}>
+                          {p}
+                        </td>
+                      ))}
+                    </tr>
+                  </tbody>
+                </table>
+              </div>
+              <p className="muted">
+                Au-delà de la 10e place de la manche, aucun point n&apos;est attribué. Un pilote non classé ne marque
+                aucun point sur la manche, Power Stage comprise.
+              </p>
             </Article>
 
             <Article n={7}>
               <p>
-                Le classement général additionne les points de <strong>toutes les manches</strong> disputées, tels que
-                calculés par le championnat de club RaceNet. Une manche non disputée rapporte 0 point.
+                Le classement général additionne les points de <strong>toutes les manches</strong> disputées, selon le
+                barème de l&apos;article 6. Une manche non disputée rapporte 0 point.
               </p>
               <p>
-                Les ajustements de points décidés par les organisateurs (article 8) sont appliqués sur le{" "}
-                <Link href="/classements">classement du site</Link>, avec leur motif.
+                Il est calculé par le site à partir du résultat de chaque manche, pénalités comprises, et publié sur la
+                page <Link href="/classements">Classements</Link>. Les ajustements de points décidés par les
+                organisateurs (article 8) y sont appliqués, avec leur motif.
               </p>
               <aside className="callout">
-                <strong>En cas d&apos;égalité de points</strong>, l&apos;ordre du classement RaceNet fait foi.
+                <strong>En cas d&apos;égalité de points</strong>, les pilotes sont départagés par leur nombre de
+                victoires, puis de 2es places, puis de 3es places, et ainsi de suite. Si l&apos;égalité persiste, ils
+                partagent la même place.
               </aside>
             </Article>
 

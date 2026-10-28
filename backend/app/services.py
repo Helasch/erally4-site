@@ -31,6 +31,7 @@ from app.models import (
 )
 from app.rally_status import compute_statuses, now_paris
 from app.scoring import (
+    WRC_POINTS,
     ChampionshipCandidate,
     Classified,
     Finish,
@@ -38,12 +39,12 @@ from app.scoring import (
     RallyFinish,
     StageTime,
     TimedResult,
-    apply_adjustments,
     classify,
     compare_standings,
     compute_custom_standings,
     cumulative_after,
     driver_stats,
+    power_stage_bonus,
     suggest_for_championship,
     suggest_for_rally,
 )
@@ -124,6 +125,44 @@ def rally_winner(rally: Rally) -> RallyResult | None:
     return None
 
 
+# --- Points d'un rallye ------------------------------------------------------------
+
+
+@dataclass
+class RallyScoring:
+    """Barème appliqué au classement d'un rallye, et points de Power Stage par pilote."""
+
+    scale: dict[int, int]
+    bonus: dict[int, int]
+
+
+def power_stage_positions(rally: Rally) -> dict[int, int]:
+    """Places des pilotes identifiés sur la dernière spéciale du rallye (la Power Stage)."""
+    if not rally.stages:
+        return {}
+    last = max(rally.stages, key=lambda s: s.number)
+    return {r.driver_id: r.position for r in last.results if r.driver_id is not None}
+
+
+def rally_scoring(championship: Championship, rally: Rally) -> RallyScoring:
+    """Barème personnalisé tel quel ; barème RaceNet : barème WRC au classement du rallye (pénalités
+    comprises) et Power Stage pour les cinq plus rapides de la dernière spéciale, classés au rallye."""
+    if championship.scoring_mode == "custom":
+        return RallyScoring(scoring_table(championship), {})
+    classified = {
+        r.driver_id for r, c in classified_results(rally) if r.driver_id is not None and c.position is not None
+    }
+    return RallyScoring(WRC_POINTS, power_stage_bonus(power_stage_positions(rally), classified))
+
+
+def result_points(scoring: RallyScoring, result: RallyResult, c: Classified) -> int:
+    """Points marqués sur le rallye ; un non-classé n'en marque aucun."""
+    if c.position is None:
+        return 0
+    bonus = scoring.bonus.get(result.driver_id, 0) if result.driver_id is not None else 0
+    return scoring.scale.get(c.position, 0) + bonus
+
+
 def _penalty_info(r: RallyResult) -> dict:
     return {
         "penalty_s": round((r.penalty_ms or 0) / 1000, 3),
@@ -132,7 +171,7 @@ def _penalty_info(r: RallyResult) -> dict:
     }
 
 
-def rally_results_payload(rally: Rally, scoring: dict[int, int] | None) -> list[dict]:
+def rally_results_payload(rally: Rally, scoring: RallyScoring) -> list[dict]:
     splits = stage_splits(rally)
     payload = []
     for r, c in classified_results(rally):
@@ -149,7 +188,9 @@ def rally_results_payload(rally: Rally, scoring: dict[int, int] | None) -> list[
                 "diff": format_time_ms(c.diff_ms) if c.diff_ms is not None else None,
                 # Écart avec le pilote classé juste devant
                 "diff_prev": format_time_ms(c.diff_prev_ms) if c.diff_prev_ms is not None else None,
-                "points": (scoring.get(c.position, 0) if c.position else 0) if scoring is not None else None,
+                "points": result_points(scoring, r, c),
+                # Dont points de Power Stage (barème RaceNet)
+                "power_stage_points": scoring.bonus.get(r.driver_id, 0) if c.position and r.driver_id else 0,
                 **_penalty_info(r),
                 # Rang et temps sur chaque spéciale
                 "stages": splits.get(("driver", r.driver_id) if r.driver_id is not None else ("name", r.raw_name), []),
@@ -173,112 +214,109 @@ def _rally_ref(rally: Rally | None, rallies: list[Rally]) -> dict | None:
     return {"id": rally.id, "name": rally.name, "round": rallies.index(rally) + 1}
 
 
-def _raw_snapshots(db: Session, championship: Championship) -> list[Snapshot]:
-    """Un classement général par rallye disputé, dans l'ordre du calendrier."""
+def _raw_snapshots(
+    db: Session, championship: Championship, adjustments: list[StandingAdjustment] | None = None
+) -> list[Snapshot]:
+    """Un classement général par rallye disputé, dans l'ordre du calendrier, calculé à partir des résultats
+    (pénalités comprises) : barème personnalisé, ou barème RaceNet (barème WRC et Power Stage).
+    `adjustments` : ajustements de points des organisateurs à inclure (aucun pour le contrôle RaceNet).
+
+    Le classement exporté par RaceNet n'est plus affiché : il sert de contrôle (voir racenet_check).
+    """
     rallies = list(championship.rallies)
-
-    if championship.scoring_mode == "custom":
-        scoring = scoring_table(championship)
-        finishes = [
-            [
-                RallyFinish(r.driver_id, display_name(r.driver, r.raw_name), c.position)
-                for r, c in classified_results(rally)
-                if r.driver_id is not None and c.position is not None
-            ]
-            for rally in rallies
+    scorings = [rally_scoring(championship, rally) for rally in rallies]
+    scale = scoring_table(championship) if championship.scoring_mode == "custom" else WRC_POINTS
+    finishes = [
+        [
+            RallyFinish(r.driver_id, display_name(r.driver, r.raw_name), c.position)
+            for r, c in classified_results(rally)
+            if r.driver_id is not None and c.position is not None
         ]
-        snapshots = []
-        for index, rally in enumerate(rallies):
-            if not rally.results:
-                continue
-            entries = compute_custom_standings(finishes[: index + 1], scoring)
-            snapshots.append(
-                Snapshot(
-                    rally,
-                    [
-                        {
-                            "position": e.position,
-                            "name": e.name,
-                            "driver_id": e.driver_id,
-                            "identified": True,
-                            "points": e.points,
-                            "per_rally": e.per_rally + [None] * (len(rallies) - len(e.per_rally)),
-                        }
-                        for e in entries
-                    ],
-                    sum(1 for r in rallies[: index + 1] for x in r.results if x.driver_id is None),
-                )
+        for rally in rallies
+    ]
+    snapshots = []
+    for index, rally in enumerate(rallies):
+        if not rally.results:
+            continue
+        # Un ajustement compte à partir du rallye concerné (ou dès le premier s'il n'en vise aucun) ;
+        # il entre dans les points avant le classement, pour que les égalités se départagent comme les autres
+        totals: dict[int, int] = defaultdict(int)
+        reasons: dict[int, list[str]] = defaultdict(list)
+        for a in adjustments or []:
+            if a.rally is None or a.rally.order_index <= rally.order_index:
+                totals[a.driver_id] += a.points
+                reasons[a.driver_id].append(f"{a.points:+d} pts : {a.reason}")
+        entries = compute_custom_standings(
+            finishes[: index + 1], scale, bonus=[s.bonus for s in scorings[: index + 1]], extra=dict(totals)
+        )
+        snapshots.append(
+            Snapshot(
+                rally,
+                [
+                    {
+                        "position": e.position,
+                        "name": e.name,
+                        "driver_id": e.driver_id,
+                        "identified": True,
+                        "points": e.points,
+                        "per_rally": e.per_rally + [None] * (len(rallies) - len(e.per_rally)),
+                        "adjustment": totals.get(e.driver_id, 0),
+                        "adjustment_reasons": reasons.get(e.driver_id, []),
+                    }
+                    for e in entries
+                ],
+                sum(1 for r in rallies[: index + 1] for x in r.results if x.driver_id is None),
             )
-        return snapshots
+        )
+    return snapshots
 
+
+def racenet_check(db: Session, championship: Championship) -> list[dict]:
+    """Contrôle du classement calculé par le site avec celui exporté par RaceNet, après chaque rallye
+    où RaceNet en a fourni un : pilotes dont les points diffèrent (hors ajustements des organisateurs)."""
+    rallies = list(championship.rallies)
+    computed = {s.rally.id: s for s in _raw_snapshots(db, championship) if s.rally is not None}
     rows = db.scalars(
         select(RacenetStanding)
-        .where(RacenetStanding.championship_id == championship.id)
+        .where(RacenetStanding.championship_id == championship.id, RacenetStanding.rally_id.is_not(None))
         .order_by(RacenetStanding.position)
     ).all()
-    by_rally: dict[int | None, list[RacenetStanding]] = defaultdict(list)
+    by_rally: dict[int, list[RacenetStanding]] = defaultdict(list)
     for row in rows:
         by_rally[row.rally_id].append(row)
 
-    def entries(group: list[RacenetStanding]) -> list[dict]:
-        return [
+    checks = []
+    for rally in rallies:
+        if rally.id not in by_rally:
+            continue
+        racenet = {r.driver_id: r for r in by_rally[rally.id] if r.driver_id is not None}
+        site = {e["driver_id"]: e for e in computed[rally.id].entries} if rally.id in computed else {}
+        differences = []
+        for driver_id in sorted(set(racenet) | set(site), key=lambda d: -(site.get(d, {}).get("points") or 0)):
+            theirs = racenet[driver_id].points if driver_id in racenet else None
+            ours = site[driver_id]["points"] if driver_id in site else None
+            if (theirs or 0) != (ours or 0):
+                name = site[driver_id]["name"] if driver_id in site else display_name(
+                    racenet[driver_id].driver, racenet[driver_id].raw_name
+                )
+                differences.append({"driver_id": driver_id, "name": name, "racenet": theirs, "site": ours})
+        checks.append(
             {
-                "id": r.id,
-                "position": r.position,
-                "name": display_name(r.driver, r.raw_name),
-                "driver_id": r.driver_id,
-                "identified": r.driver_id is not None,
-                "points": r.points,
+                "rally": _rally_ref(rally, rallies),
+                "compared": len(set(racenet) | set(site)),
+                "unidentified": sum(1 for r in by_rally[rally.id] if r.driver_id is None),
+                "differences": differences,
             }
-            for r in group
-        ]
-
-    snapshots = [
-        Snapshot(rally, entries(by_rally[rally.id]), sum(1 for r in by_rally[rally.id] if r.driver_id is None))
-        for rally in rallies
-        if rally.id in by_rally
-    ]
-    if not snapshots and None in by_rally:
-        legacy = by_rally[None]
-        snapshots = [Snapshot(None, entries(legacy), sum(1 for r in legacy if r.driver_id is None))]
-    return snapshots
+        )
+    return checks
 
 
 def standings_snapshots(db: Session, championship: Championship) -> list[Snapshot]:
     """Classements généraux par rallye, ajustements de points des organisateurs compris."""
-    snapshots = _raw_snapshots(db, championship)
     adjustments = db.scalars(
         select(StandingAdjustment).where(StandingAdjustment.championship_id == championship.id)
     ).all()
-    if not adjustments:
-        return snapshots
-
-    for snapshot in snapshots:
-        # Un ajustement compte à partir du rallye concerné (ou partout s'il n'en vise aucun)
-        applicable = [
-            a
-            for a in adjustments
-            if a.rally is None or snapshot.rally is None or a.rally.order_index <= snapshot.rally.order_index
-        ]
-        totals: dict[int, int] = defaultdict(int)
-        reasons: dict[int, list[str]] = defaultdict(list)
-        for a in applicable:
-            totals[a.driver_id] += a.points
-            reasons[a.driver_id].append(f"{a.points:+d} pts : {a.reason}")
-        reordered = apply_adjustments(
-            [(e["driver_id"], e["position"], e["points"]) for e in snapshot.entries], dict(totals)
-        )
-        snapshot.entries = [
-            {
-                **snapshot.entries[i],
-                "position": position,
-                "points": points,
-                "adjustment": totals.get(snapshot.entries[i]["driver_id"], 0),
-                "adjustment_reasons": reasons.get(snapshot.entries[i]["driver_id"], []),
-            }
-            for i, position, points in reordered
-        ]
-    return snapshots
+    return _raw_snapshots(db, championship, adjustments)
 
 
 def championship_standings(db: Session, championship: Championship, after_rally_id: int | None = None) -> dict:
@@ -582,7 +620,225 @@ def _championship_candidates(
     return [ChampionshipCandidate(driver_id, name, previous.get(driver_id)) for driver_id, name in known.items()]
 
 
-def build_preview(db: Session, championship: Championship, rally: Rally | None, parsed: ParsedCsv) -> dict:
+# --- Spéciale importée en CSV : général du rallye recalculé à partir des spéciales ------------
+
+GeneralRow = tuple[int, Driver | None, str, str, int, int, str]
+
+
+@dataclass
+class StageLine:
+    """Temps d'un pilote sur une spéciale, pour recalculer le général du rallye."""
+
+    stage: int
+    position: int
+    key: tuple  # ("driver", id) ou ("name", pseudo) pour un pilote pas encore enregistré
+    driver: Driver | None
+    raw_name: str
+    vehicle: str
+    platform: str
+    time_ms: int
+
+
+def _stage_lines(rally: Rally, skip: int | None = None) -> list[StageLine]:
+    """Temps enregistrés sur les spéciales du rallye (sauf la spéciale `skip`, remplacée par un import)."""
+    lines = []
+    for stage in rally.stages:
+        if stage.number == skip:
+            continue
+        for r in stage.results:
+            key = _stage_key(r)
+            if key is not None:
+                lines.append(
+                    StageLine(stage.number, r.position, key, r.driver, r.raw_name, r.vehicle, r.platform, r.time_ms)
+                )
+    return lines
+
+
+def _untracked_results(rally: Rally) -> list[RallyResult]:
+    """« WRC Player » non identifiés du général : impossibles à suivre d'une spéciale à l'autre, ils gardent
+    le temps total donné par RaceNet."""
+    return [r for r in rally.results if r.driver_id is None and r.raw_name == ANONYMOUS_NAME]
+
+
+def general_rows(lines: list[StageLine], numbers: list[int], untracked: list[RallyResult]) -> list[GeneralRow]:
+    """Général du rallye recalculé comme celui de RaceNet : pilotes classés sur toutes les spéciales, au temps
+    total (le rang sur la dernière spéciale départage). `numbers` : numéros des spéciales, de 1 à N."""
+    last = max(numbers)
+    info = {line.key: line for line in lines if line.stage == last}
+    ranked = cumulative_after([StageTime(l.key, l.stage, l.position, l.time_ms) for l in lines], last)
+    entries = [
+        (total, info[key].driver, info[key].raw_name, info[key].vehicle, info[key].platform) for key, total in ranked
+    ]
+    entries += [(r.time_ms, None, r.raw_name, r.vehicle, r.platform) for r in untracked]
+    entries.sort(key=lambda e: e[0])
+    best = entries[0][0] if entries else 0
+    return [
+        (position, driver, raw_name, vehicle, total, total - best, platform)
+        for position, (total, driver, raw_name, vehicle, platform) in enumerate(entries, start=1)
+    ]
+
+
+def contiguous(numbers: list[int]) -> bool:
+    return bool(numbers) and sorted(numbers) == list(range(1, len(numbers) + 1))
+
+
+def _rally_points_by_key(
+    championship: Championship,
+    rows: list[tuple[tuple | None, int, int, bool]],
+    ps_positions: dict[tuple, int],
+) -> dict[tuple, tuple[int | None, int]]:
+    """Place et points de chaque pilote sur un rallye. `rows` : (pilote, temps, pénalité, non classé)."""
+    ranking = classify([TimedResult(i, time, penalty, disq) for i, (_, time, penalty, disq) in enumerate(rows)])
+    positions = {rows[c.key][0]: c.position for c in ranking if rows[c.key][0] is not None}
+    custom = championship.scoring_mode == "custom"
+    scale = scoring_table(championship) if custom else WRC_POINTS
+    classified = {key for key, position in positions.items() if position is not None}
+    bonus = {} if custom else power_stage_bonus(ps_positions, classified)
+    return {
+        key: (position, (scale.get(position, 0) + bonus.get(key, 0)) if position is not None else 0)
+        for key, position in positions.items()
+    }
+
+
+def stage_import_impact(
+    championship: Championship, rally: Rally, number: int, new_lines: list[StageLine]
+) -> dict:
+    """Effet d'une spéciale importée sur le général du rallye et sur ses points, avant validation."""
+    numbers = sorted({s.number for s in rally.stages} | {number})
+    lines = _stage_lines(rally, skip=number) + new_lines
+    after = general_rows(lines, numbers, _untracked_results(rally)) if contiguous(numbers) else []
+
+    def key_of(driver: Driver | None, raw_name: str) -> tuple | None:
+        if driver is not None:
+            return ("driver", driver.id)
+        return None if raw_name == ANONYMOUS_NAME else ("name", raw_name)
+
+    penalties = {
+        ("driver", r.driver_id): (r.penalty_ms or 0, bool(r.disqualified)) for r in rally.results if r.driver_id
+    }
+    before_rows = [
+        (key_of(r.driver, r.raw_name), r.time_ms, r.penalty_ms or 0, bool(r.disqualified)) for r in rally.results
+    ]
+    after_rows = [
+        (key_of(driver, raw_name), total, *penalties.get(key_of(driver, raw_name), (0, False)))
+        for _, driver, raw_name, _, total, _, _ in after
+    ]
+    last = max(numbers)
+    ps_before = {
+        ("driver", driver_id): position for driver_id, position in power_stage_positions(rally).items()
+    }
+    ps_after = {line.key: line.position for line in lines if line.stage == last}
+    before = _rally_points_by_key(championship, before_rows, ps_before)
+    after_points = _rally_points_by_key(championship, after_rows, ps_after)
+
+    names = {key_of(r.driver, r.raw_name): display_name(r.driver, r.raw_name) for r in rally.results}
+    names.update({l.key: display_name(l.driver, l.raw_name) for l in lines})
+    changes = []
+    for key in set(before) | set(after_points):
+        if key is None:
+            continue
+        old_position, old_points = before.get(key, (None, 0))
+        new_position, new_points = after_points.get(key, (None, 0))
+        if (old_position, old_points) != (new_position, new_points):
+            changes.append(
+                {
+                    "name": names.get(key, key[1]),
+                    "position_before": old_position,
+                    "position_after": new_position,
+                    "points_before": old_points,
+                    "points_after": new_points,
+                }
+            )
+    changes.sort(key=lambda c: (c["position_after"] is None, c["position_after"] or 0, c["name"].lower()))
+    return {
+        "possible": contiguous(numbers),
+        "stage_count": len(numbers),
+        "classified_before": sum(1 for p, _ in before.values() if p is not None),
+        "classified_after": sum(1 for p, _ in after_points.values() if p is not None),
+        "changes": changes,
+    }
+
+
+def _check_stage_import(rally: Rally | None, parsed: ParsedCsv, number: int) -> Rally:
+    if parsed.kind != "rally":
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, "Ce fichier est un classement du championnat, pas une spéciale."
+        )
+    if rally is None:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Choisissez le rallye de la spéciale.")
+    highest = len(rally.stages) + 1
+    if not 1 <= number <= highest:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY, f"Numéro de spéciale invalide : choisissez entre ES1 et ES{highest}."
+        )
+    return rally
+
+
+def _csv_stage_lines(db: Session, parsed: ParsedCsv, number: int) -> list[StageLine]:
+    """Lignes d'un CSV de spéciale, pilotes reconnus par leur pseudo (aperçu : les « WRC Player » sont ignorés)."""
+    names = [r.name for r in parsed.rows if not r.is_anonymous]
+    known = {d.name.lower(): d for d in db.scalars(select(Driver).where(Driver.name.in_(names)))} if names else {}
+    lines = []
+    for r in parsed.rows:
+        if r.is_anonymous:
+            continue
+        driver = known.get(r.name.lower())
+        key = ("driver", driver.id) if driver else ("name", r.name)
+        lines.append(StageLine(number, r.position, key, driver, r.name, r.vehicle, r.platform, r.time_ms))
+    return lines
+
+
+def build_stage_preview(
+    db: Session, championship: Championship, rally: Rally | None, parsed: ParsedCsv, number: int
+) -> dict:
+    """Aperçu d'une spéciale importée en CSV : ses temps, et l'effet sur le général du rallye et ses points."""
+    rally = _check_stage_import(rally, parsed, number)
+    preview = build_preview(db, championship, rally, parsed)
+    existing = next((s for s in rally.stages if s.number == number), None)
+    numbers = [s.number for s in rally.stages]
+
+    warnings = []
+    if existing is not None:
+        label = f"ES{number}" + (f" ({existing.name})" if existing.name and existing.name != f"ES{number}" else "")
+        warnings.append(f"La spéciale {label} déjà importée ({len(existing.results)} temps) sera remplacée.")
+    else:
+        warnings.append(f"Nouvelle spéciale : ES{number}.")
+    if preview["anonymous_count"]:
+        warnings.append(
+            "Les « WRC Player » non identifiés ne peuvent pas être suivis d'une spéciale à l'autre : "
+            "identifiez-les pour qu'ils comptent au général du rallye."
+        )
+
+    impact = stage_import_impact(championship, rally, number, _csv_stage_lines(db, parsed, number))
+    # Par défaut, le général est recalculé quand la spéciale remplace ou complète celles déjà importées
+    # (pas quand on ajoute une spéciale après la dernière, le rallye pouvant en compter d'autres)
+    recompute_default = impact["possible"] and bool(numbers) and number <= max(numbers)
+    if not impact["possible"]:
+        warnings.append("Le général du rallye ne peut pas être recalculé : des spéciales manquent avant celle-ci.")
+
+    return {
+        **preview,
+        "kind": "stage",
+        "warnings": warnings,
+        "stage": {
+            "number": number,
+            "name": existing.name if existing else None,
+            "exists": existing is not None,
+            "replaced": len(existing.results) if existing else 0,
+        },
+        "general": {**impact, "recompute_default": recompute_default},
+    }
+
+
+def build_preview(
+    db: Session,
+    championship: Championship,
+    rally: Rally | None,
+    parsed: ParsedCsv,
+    stage_number: int | None = None,
+) -> dict:
+    if stage_number is not None:
+        return build_stage_preview(db, championship, rally, parsed, stage_number)
     names_in_file = {r.name for r in parsed.rows if not r.is_anonymous}
     existing = (
         {d.name.lower(): d.id for d in db.scalars(select(Driver).where(Driver.name.in_(names_in_file)))}
@@ -632,10 +888,10 @@ def build_preview(db: Session, championship: Championship, rally: Rally | None, 
             rows.append(row)
 
     warnings = []
-    if parsed.kind == "championship" and championship.scoring_mode == "custom":
+    if parsed.kind == "championship":
         warnings.append(
-            "Ce championnat utilise un barème personnalisé : le classement général est calculé à partir "
-            "des rallyes, ce fichier ne sera pas utilisé pour l'affichage."
+            "Le classement général est calculé par le site à partir des rallyes : ce fichier sert de contrôle "
+            "(écarts signalés sur la page Classement général de l'admin)."
         )
     if parsed.kind == "rally" and rally is not None and rally.results:
         warnings.append(f"Les {len(rally.results)} résultats déjà importés pour « {rally.name} » seront remplacés.")
@@ -736,6 +992,58 @@ def replace_standings(
         )
 
 
+def commit_stage_import(
+    db: Session,
+    championship: Championship,
+    rally: Rally | None,
+    parsed: ParsedCsv,
+    resolutions: dict[int, str],
+    number: int,
+    stage_name: str | None,
+    recompute: bool,
+) -> None:
+    """Remplace (ou ajoute) la spéciale `number` du rallye, puis recalcule le général à partir des spéciales
+    si demandé. Les points du championnat suivent : ils sont calculés à partir des résultats."""
+    rally = _check_stage_import(rally, parsed, number)
+    if rally.championship_id != championship.id:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY, "Ce rallye n'appartient pas au championnat.")
+    stage = next((s for s in rally.stages if s.number == number), None)
+    if stage is None:
+        name = (stage_name or "").strip()[:120] or f"ES{number}"
+        stage = Stage(number=number, name=name)
+        rally.stages.append(stage)
+    elif stage_name and stage_name.strip():
+        stage.name = stage_name.strip()[:120]
+    stage.results.clear()
+    db.flush()
+    for r in parsed.rows:
+        driver = _resolve_driver(db, r.name, r.line, resolutions)
+        stage.results.append(
+            StageResult(
+                position=r.position,
+                driver_id=driver.id if driver else None,
+                raw_name=r.name,
+                vehicle=r.vehicle,
+                platform=r.platform,
+                time_ms=r.time_ms,
+                # Le CSV donne le temps pénalités comprises, sans le détail
+                penalty_ms=0,
+                diff_ms=r.diff_ms,
+            )
+        )
+    db.flush()
+    db.refresh(rally)
+
+    numbers = [s.number for s in rally.stages]
+    if recompute:
+        if not contiguous(numbers):
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Le général ne peut pas être recalculé : des spéciales manquent avant celle-ci.",
+            )
+        replace_rally_results(db, rally, general_rows(_stage_lines(rally), numbers, _untracked_results(rally)))
+
+
 def commit_import(
     db: Session,
     championship: Championship,
@@ -745,8 +1053,30 @@ def commit_import(
     data: bytes,
     original_filename: str,
     admin_id: int,
+    stage_number: int | None = None,
+    stage_name: str | None = None,
+    recompute: bool = False,
 ) -> Import:
-    """Enregistre l'import. `resolutions` associe le numéro de ligne d'un « WRC Player » au pseudo choisi."""
+    """Enregistre l'import. `resolutions` associe le numéro de ligne d'un « WRC Player » au pseudo choisi.
+
+    Avec `stage_number`, le fichier est le classement d'une spéciale du rallye (même format que le rallye)."""
+    if stage_number is not None:
+        commit_stage_import(db, championship, rally, parsed, resolutions, stage_number, stage_name, recompute)
+        record = Import(
+            kind="stage",
+            championship_id=championship.id,
+            rally_id=rally.id,
+            original_filename=f"ES{stage_number} — {original_filename}"[:255],
+            stored_filename=_store_raw_file(data, original_filename),
+            row_count=len(parsed.rows),
+            admin_id=admin_id,
+        )
+        db.add(record)
+        db.commit()
+        link_pending_accounts(db)
+        db.expire_all()
+        return record
+
     if rally is None:
         message = (
             "Choisissez le rallye correspondant au fichier."
@@ -945,7 +1275,7 @@ def driver_profile(db: Session, driver: Driver, championship: Championship | Non
     if championship is not None:
         rallies = list(championship.rallies)
         mine = _driver_results(championship).get(driver.id, [])
-        scoring = scoring_table(championship) if championship.scoring_mode == "custom" else None
+        scorings = {rally.id: rally_scoring(championship, rally) for _, rally, _, _ in mine}
         stats = driver_stats(_finishes(mine))
 
         # Position au général après chaque manche (courbe de progression)
@@ -985,7 +1315,8 @@ def driver_profile(db: Session, driver: Driver, championship: Championship | Non
                     "diff": format_time_ms(c.diff_ms) if c.diff_ms is not None else None,
                     "vehicle": r.vehicle,
                     "platform": r.platform,
-                    "points": (scoring.get(c.position, 0) if c.position else 0) if scoring is not None else None,
+                    "points": result_points(scorings[rally.id], r, c),
+                    "power_stage_points": scorings[rally.id].bonus.get(driver.id, 0) if c.position else 0,
                     **_penalty_info(r),
                 }
                 for round_, rally, r, c in mine

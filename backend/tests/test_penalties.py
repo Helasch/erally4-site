@@ -1,4 +1,4 @@
-from app.scoring import Classified, TimedResult, apply_adjustments, classify
+from app.scoring import Classified, TimedResult, classify
 
 
 def test_classify_without_penalty_keeps_racenet_order():
@@ -24,16 +24,3 @@ def test_disqualified_at_the_end_without_position():
 def test_equal_times_keep_original_order():
     out = classify([TimedResult(1, 1200), TimedResult(2, 1000, penalty_ms=200)])
     assert [c.key for c in out] == [1, 2]
-
-
-def test_adjustments_reorder_standings():
-    entries = [(10, 1, 41), (20, 2, 37), (30, 3, 30)]
-    assert apply_adjustments(entries, {}) == [(0, 1, 41), (1, 2, 37), (2, 3, 30)]
-    assert apply_adjustments(entries, {10: -10}) == [(1, 1, 37), (0, 2, 31), (2, 3, 30)]
-    # égalité après ajustement : l'ordre d'origine (RaceNet) départage
-    assert apply_adjustments(entries, {20: -7}) == [(0, 1, 41), (1, 2, 30), (2, 3, 30)]
-
-
-def test_adjustments_ignore_unidentified_rows():
-    entries = [(None, 1, 20), (10, 2, 18)]
-    assert apply_adjustments(entries, {10: 5}) == [(1, 1, 23), (0, 2, 20)]

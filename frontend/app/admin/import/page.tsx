@@ -22,19 +22,46 @@ type PreviewRow = {
   suggestions: Suggestion[];
 };
 
+/** Effet d'une spéciale importée sur le général du rallye et ses points */
+type StageImpact = {
+  possible: boolean;
+  stage_count: number;
+  classified_before: number;
+  classified_after: number;
+  recompute_default: boolean;
+  changes: {
+    name: string;
+    position_before: number | null;
+    position_after: number | null;
+    points_before: number;
+    points_after: number;
+  }[];
+};
+
 type Preview = {
-  kind: "rally" | "championship";
+  kind: "rally" | "championship" | "stage";
   row_count: number;
   anonymous_count: number;
   warnings: string[];
   rows: PreviewRow[];
+  stage?: { number: number; name: string | null; exists: boolean; replaced: number };
+  general?: StageImpact;
 };
+
+function place(position: number | null) {
+  return position === null ? "non classé" : `${position}${position === 1 ? "er" : "e"}`;
+}
 
 export default function ImportPage() {
   const [championships, setChampionships] = useState<AdminChampionship[]>([]);
   const [drivers, setDrivers] = useState<Driver[]>([]);
   const [championshipId, setChampionshipId] = useState<number | "">("");
   const [rallyId, setRallyId] = useState<number | "">("");
+  // Contenu d'un fichier au format rallye : le classement du rallye, ou une seule spéciale
+  const [target, setTarget] = useState<"rally" | "stage">("rally");
+  const [stageNumber, setStageNumber] = useState<number | "">("");
+  const [stageName, setStageName] = useState("");
+  const [recompute, setRecompute] = useState(true);
   const [file, setFile] = useState<File | null>(null);
   const [preview, setPreview] = useState<Preview | null>(null);
   const [resolutions, setResolutions] = useState<Record<number, string>>({});
@@ -55,17 +82,24 @@ export default function ImportPage() {
     () => championships.find((c) => c.id === championshipId),
     [championships, championshipId],
   );
+  const rally = championship?.rallies.find((r) => r.id === rallyId);
+  const stageCount = rally?.stage_count ?? 0;
 
   function formData() {
     const data = new FormData();
     data.append("file", file!);
     data.append("championship_id", String(championshipId));
     if (rallyId) data.append("rally_id", String(rallyId));
+    if (target === "stage" && stageNumber) data.append("stage_number", String(stageNumber));
     return data;
   }
 
   async function loadPreview() {
     if (!file || !championshipId) return;
+    if (target === "stage" && (!rallyId || !stageNumber)) {
+      setError("Choisissez le rallye et la spéciale correspondant au fichier.");
+      return;
+    }
     setBusy(true);
     setError("");
     setDone("");
@@ -84,6 +118,7 @@ export default function ImportPage() {
         }
       }
       setResolutions(initial);
+      setRecompute(result.general?.recompute_default ?? true);
       setPreview(result);
     } catch (e) {
       setError(errorMessage(e));
@@ -112,8 +147,18 @@ export default function ImportPage() {
     try {
       const data = formData();
       data.append("resolutions", JSON.stringify(resolutions));
+      if (preview.kind === "stage") {
+        if (stageName.trim()) data.append("stage_name", stageName.trim());
+        data.append("recompute", String(recompute));
+      }
       const result = await adminApi.post<{ row_count: number }>("/imports", data);
-      setDone(`Import terminé : ${result.row_count} lignes enregistrées.`);
+      setDone(
+        preview.kind === "stage"
+          ? `Spéciale ES${preview.stage?.number} enregistrée : ${result.row_count} temps${
+              recompute ? ", classement du rallye et points recalculés" : ""
+            }.`
+          : `Import terminé : ${result.row_count} lignes enregistrées.`,
+      );
       setPreview(null);
       setFile(null);
       refresh();
@@ -175,8 +220,22 @@ export default function ImportPage() {
             }}
           />
           <p className="muted" style={{ margin: "4px 0 0" }}>
-            Le type (rallye ou championnat) est détecté automatiquement.
+            Un classement du championnat est reconnu automatiquement. Un fichier de rallye peut contenir le classement
+            final du rallye ou une seule spéciale : précisez-le ci-dessous.
           </p>
+
+          <label htmlFor="target">Le fichier contient</label>
+          <select
+            id="target"
+            value={target}
+            onChange={(e) => {
+              setTarget(e.target.value as "rally" | "stage");
+              setPreview(null);
+            }}
+          >
+            <option value="rally">Le classement final d&apos;un rallye, ou le classement du championnat</option>
+            <option value="stage">Une spéciale d&apos;un rallye</option>
+          </select>
 
           <label htmlFor="rally">Rallye concerné</label>
           <p className="muted" style={{ margin: "0 0 6px" }}>
@@ -188,6 +247,7 @@ export default function ImportPage() {
             value={rallyId}
             onChange={(e) => {
               setRallyId(e.target.value ? Number(e.target.value) : "");
+              setStageNumber("");
               setPreview(null);
             }}
           >
@@ -198,6 +258,39 @@ export default function ImportPage() {
               </option>
             ))}
           </select>
+
+          {target === "stage" && rally && (
+            <>
+              <label htmlFor="stage">Spéciale</label>
+              <select
+                id="stage"
+                value={stageNumber}
+                onChange={(e) => {
+                  setStageNumber(e.target.value ? Number(e.target.value) : "");
+                  setPreview(null);
+                }}
+              >
+                <option value="">—</option>
+                {Array.from({ length: stageCount + 1 }, (_, i) => i + 1).map((n) => (
+                  <option key={n} value={n}>
+                    ES{n} {n <= stageCount ? "(déjà importée, sera remplacée)" : "(nouvelle)"}
+                  </option>
+                ))}
+              </select>
+              {stageNumber !== "" && stageNumber > stageCount && (
+                <>
+                  <label htmlFor="stage-name">Nom de la spéciale (facultatif)</label>
+                  <input
+                    id="stage-name"
+                    value={stageName}
+                    maxLength={120}
+                    placeholder={`ES${stageNumber}`}
+                    onChange={(e) => setStageName(e.target.value)}
+                  />
+                </>
+              )}
+            </>
+          )}
 
           <p>
             <button className="primary" disabled={!file || !championshipId || busy} onClick={loadPreview}>
@@ -211,8 +304,15 @@ export default function ImportPage() {
         {preview && (
           <section>
             <h2>
-              Aperçu : {preview.kind === "rally" ? "résultats d'un rallye" : "classement du championnat"} ·{" "}
-              {preview.row_count} lignes
+              Aperçu :{" "}
+              {preview.kind === "stage"
+                ? `spéciale ES${preview.stage?.number}${
+                    preview.stage?.name && preview.stage.name !== `ES${preview.stage.number}` ? ` (${preview.stage.name})` : ""
+                  }`
+                : preview.kind === "rally"
+                  ? "résultats d'un rallye"
+                  : "classement du championnat"}{" "}
+              · {preview.row_count} lignes
             </h2>
             {preview.warnings.map((w) => (
               <p key={w} className="alert warn">
@@ -232,7 +332,7 @@ export default function ImportPage() {
                   <tr>
                     <th>#</th>
                     <th>Pilote</th>
-                    {preview.kind === "rally" ? (
+                    {preview.kind !== "championship" ? (
                       <>
                         <th>Voiture</th>
                         <th className="num">Temps</th>
@@ -275,7 +375,7 @@ export default function ImportPage() {
                           </>
                         )}
                       </td>
-                      {preview.kind === "rally" ? (
+                      {preview.kind !== "championship" ? (
                         <>
                           <td className="muted">{row.vehicle}</td>
                           <td className="num">{row.time}</td>
@@ -292,6 +392,10 @@ export default function ImportPage() {
               </table>
             </div>
 
+            {preview.kind === "stage" && preview.general && (
+              <StageImpactCard impact={preview.general} recompute={recompute} setRecompute={setRecompute} />
+            )}
+
             <p className="row">
               <button className="primary" disabled={busy} onClick={confirmImport}>
                 {busy ? "Import…" : "Valider l'import"}
@@ -302,5 +406,87 @@ export default function ImportPage() {
         )}
       </details>
     </main>
+  );
+}
+
+/** Effet de la spéciale sur le classement du rallye et ses points, avec le choix de recalculer le général */
+function StageImpactCard({
+  impact,
+  recompute,
+  setRecompute,
+}: {
+  impact: StageImpact;
+  recompute: boolean;
+  setRecompute: (value: boolean) => void;
+}) {
+  return (
+    <section className="card">
+      <h3>Classement du rallye et points</h3>
+      {impact.possible ? (
+        <>
+          <label className="checkbox">
+            <input type="checkbox" checked={recompute} onChange={(e) => setRecompute(e.target.checked)} />
+            Recalculer le classement du rallye à partir des {impact.stage_count} spéciales (ES1 à ES{impact.stage_count})
+          </label>
+          <p className="muted">
+            Comme le général de RaceNet : pilotes classés sur toutes les spéciales, au temps total. Les pénalités déjà
+            décidées sont conservées, et les points du championnat suivent automatiquement.
+            {!impact.recompute_default &&
+              " Cette spéciale s'ajoute après la dernière importée : ne cochez que si toutes les spéciales du rallye sont là."}
+          </p>
+          {recompute &&
+            (impact.changes.length === 0 ? (
+              <p className="alert ok">Aucun changement au classement ni aux points du rallye.</p>
+            ) : (
+              <>
+                <p>
+                  {impact.classified_after} pilotes classés au rallye (contre {impact.classified_before}) ·{" "}
+                  {impact.changes.length} changement(s) :
+                </p>
+                <div className="table-wrap">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Pilote</th>
+                        <th>Place au rallye</th>
+                        <th className="num">Points du rallye</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {impact.changes.map((c) => (
+                        <tr key={c.name}>
+                          <td>{c.name}</td>
+                          <td>
+                            {c.position_before === c.position_after ? (
+                              place(c.position_after)
+                            ) : (
+                              <>
+                                {place(c.position_before)} → <strong>{place(c.position_after)}</strong>
+                              </>
+                            )}
+                          </td>
+                          <td className="num">
+                            {c.points_before === c.points_after ? (
+                              c.points_after
+                            ) : (
+                              <>
+                                {c.points_before} → <strong>{c.points_after}</strong>
+                              </>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            ))}
+        </>
+      ) : (
+        <p className="alert warn">
+          Le classement du rallye ne peut pas être recalculé tant que les spéciales précédentes ne sont pas importées.
+        </p>
+      )}
+    </section>
   );
 }
