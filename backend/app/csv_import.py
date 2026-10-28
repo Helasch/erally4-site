@@ -1,7 +1,9 @@
 """Lecture et validation des exports CSV de RaceNet (EA SPORTS WRC).
 
-Deux formats sont reconnus à partir de l'en-tête :
+Trois formats sont reconnus à partir de l'en-tête :
 - rallye : Rank,DisplayName,Vehicle,Time,DifferenceToFirst,Platform
+- spéciale : Rank,DisplayName,Vehicle,Time,TimePenalty,DifferenceToFirst,Platform
+  (Time inclut déjà la pénalité ; un abandon a Time = TimePenalty)
 - championnat : Rank,DisplayName,PointsAccumulated
 
 Les exports RaceNet se terminent par une virgule (colonne vide), tolérée ici.
@@ -16,6 +18,7 @@ from dataclasses import dataclass, field
 ANONYMOUS_NAME = "WRC Player"
 
 RALLY_COLUMNS = ["Rank", "DisplayName", "Vehicle", "Time", "DifferenceToFirst", "Platform"]
+STAGE_COLUMNS = ["Rank", "DisplayName", "Vehicle", "Time", "TimePenalty", "DifferenceToFirst", "Platform"]
 CHAMPIONSHIP_COLUMNS = ["Rank", "DisplayName", "PointsAccumulated"]
 
 MAX_ROWS = 1000
@@ -49,6 +52,8 @@ class RallyRow:
     time_ms: int
     diff_ms: int
     platform: str
+    # Pénalité RaceNet, déjà comprise dans time_ms (fichier de spéciale seulement)
+    penalty_ms: int = 0
 
     @property
     def is_anonymous(self) -> bool:
@@ -71,6 +76,8 @@ class ChampionshipRow:
 class ParsedCsv:
     kind: str  # "rally" | "championship"
     rows: list = field(default_factory=list)
+    # Fichier d'une spéciale (colonne TimePenalty) : lignes au format rallye, avec la pénalité
+    stage: bool = False
 
 
 def parse_time_ms(value: str) -> int:
@@ -131,21 +138,24 @@ def parse_csv(data: bytes) -> ParsedCsv:
     except StopIteration:
         raise CsvError("fichier vide") from None
 
-    if header == RALLY_COLUMNS:
-        kind, columns = "rally", RALLY_COLUMNS
+    stage = header == STAGE_COLUMNS
+    if header == RALLY_COLUMNS or stage:
+        kind, columns = "rally", header
     elif header == CHAMPIONSHIP_COLUMNS:
         kind, columns = "championship", CHAMPIONSHIP_COLUMNS
     else:
         raise CsvError(
             "en-tête non reconnu. Attendu « "
             + ",".join(RALLY_COLUMNS)
-            + " » (rallye) ou « "
+            + " » (rallye), « "
+            + ",".join(STAGE_COLUMNS)
+            + " » (spéciale) ou « "
             + ",".join(CHAMPIONSHIP_COLUMNS)
             + f" » (championnat), reçu « {','.join(header)} »",
             line=1,
         )
 
-    parsed = ParsedCsv(kind=kind)
+    parsed = ParsedCsv(kind=kind, stage=stage)
     seen_names: dict[str, int] = {}
     seen_positions: dict[int, int] = {}
 
@@ -181,6 +191,12 @@ def parse_csv(data: bytes) -> ParsedCsv:
                 diff_ms = parse_time_ms(values["DifferenceToFirst"])
             except ValueError as exc:
                 raise CsvError(str(exc), line, "DifferenceToFirst") from None
+            penalty_ms = 0
+            if stage:
+                try:
+                    penalty_ms = parse_time_ms(values["TimePenalty"])
+                except ValueError as exc:
+                    raise CsvError(str(exc), line, "TimePenalty") from None
             vehicle = values["Vehicle"].strip()
             platform = values["Platform"].strip()
             if not vehicle:
@@ -188,7 +204,7 @@ def parse_csv(data: bytes) -> ParsedCsv:
             if not platform:
                 raise CsvError("plateforme vide", line, "Platform")
             parsed.rows.append(
-                RallyRow(line, position, name, vehicle[:64], time_ms, diff_ms, platform[:16])
+                RallyRow(line, position, name, vehicle[:64], time_ms, diff_ms, platform[:16], penalty_ms)
             )
         else:
             points = _int(values["PointsAccumulated"], line, "PointsAccumulated")

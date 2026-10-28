@@ -29,6 +29,39 @@ def test_parse_rally():
     assert parsed.rows[1].diff_ms == 36_316
 
 
+# Export d'une spéciale : colonne TimePenalty, déjà comprise dans Time ; abandon : Time = TimePenalty
+STAGE_CSV = """Rank,DisplayName,Vehicle,Time,TimePenalty,DifferenceToFirst,Platform,
+1,PiloteA,Peugeot 208 Rally4,00:09:36.1300000,00:00:00,00:00:00,PSN,
+2,PiloteB,Renault Clio Rally4,00:10:17.3210000,00:00:07,00:00:41.1910000,EA,
+3,PiloteC,Peugeot 208 Rally4,00:25:00,00:25:00,00:15:23.8700000,XBOX,
+"""
+
+
+def test_parse_stage():
+    parsed = parse_csv(STAGE_CSV.encode())
+    assert (parsed.kind, parsed.stage) == ("rally", True)
+    assert [(r.name, r.time_ms, r.penalty_ms, r.diff_ms) for r in parsed.rows] == [
+        ("PiloteA", 576_130, 0, 0),
+        ("PiloteB", 617_321, 7_000, 41_191),
+        ("PiloteC", 1_500_000, 1_500_000, 923_870),
+    ]
+    assert not parse_csv(RALLY_CSV.encode()).stage
+    assert parse_csv(RALLY_CSV.encode()).rows[0].penalty_ms == 0
+
+
+def test_stage_penalty_validated():
+    data = STAGE_CSV.replace("00:00:07", "7s")
+    with pytest.raises(CsvError) as exc:
+        parse_csv(data.encode())
+    assert (exc.value.line, exc.value.column) == (3, "TimePenalty")
+
+
+def test_unknown_header_lists_the_three_formats():
+    with pytest.raises(CsvError) as exc:
+        parse_csv(b"Rank,DisplayName,Time\n1,A,00:01:00\n")
+    assert "TimePenalty" in exc.value.message and "PointsAccumulated" in exc.value.message
+
+
 def test_parse_championship():
     parsed = parse_csv(CHAMPIONSHIP_CSV.encode())
     assert parsed.kind == "championship"
